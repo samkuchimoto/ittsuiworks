@@ -141,10 +141,15 @@ export default async function Home({ params }: PageProps<"/[lang]">) {
 
         {/* The bottleneck, from first principles: projects are signed with money and finished by hands. */}
         <section id="bottleneck" aria-labelledby="bottleneck-title" className="relative mt-16 overflow-hidden bg-navy-deep py-20 text-white lg:mt-24 lg:py-28">
-          {/* Copper, steam and cooling towers behind the band, dimmed so the text stays easy to read. */}
-          <Film name="film-thermal" className="opacity-60" />
-          <div aria-hidden="true" className="absolute inset-0 bg-[linear-gradient(180deg,rgba(10,27,51,0.66)_0%,rgba(10,27,51,0.86)_45%,rgba(10,27,51,0.96)_100%)]" />
-          <div aria-hidden="true" className="blueprint-dark absolute inset-0" />
+          {/* Copper, steam and cooling towers behind the headline and the chain, fading into navy where the
+              four points sit. Kept to the top of the band so a tall phone layout does not blow the film up. */}
+          <div className="absolute inset-x-0 top-0 h-[92svh] max-h-[980px] min-h-[620px]">
+            <Film name="film-thermal" />
+            {/* Darker on the left, where the headline sits; light in the middle so the film reads. */}
+            <div aria-hidden="true" className="absolute inset-0 bg-[linear-gradient(90deg,rgba(10,27,51,0.62)_0%,rgba(10,27,51,0.3)_55%,rgba(10,27,51,0.5)_100%)]" />
+            <div aria-hidden="true" className="absolute inset-0 bg-[linear-gradient(180deg,rgba(10,27,51,0.35)_0%,rgba(10,27,51,0.15)_40%,rgba(10,27,51,0.75)_78%,#0a1b33_100%)]" />
+          </div>
+          <div aria-hidden="true" className="blueprint-dark absolute inset-0 opacity-60" />
           <div className="relative mx-auto max-w-[1280px] px-4 sm:px-8">
             <div className="grid gap-8 lg:grid-cols-[1.15fr_1fr] lg:items-end lg:gap-16">
               <div>
