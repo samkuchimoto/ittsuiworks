@@ -142,7 +142,7 @@ export default async function Home({ params }: PageProps<"/[lang]">) {
         {/* The bottleneck, from first principles: projects are signed with money and finished by hands. */}
         <section id="bottleneck" aria-labelledby="bottleneck-title" className="relative mt-16 overflow-hidden bg-navy-deep py-20 text-white lg:mt-24 lg:py-28">
           {/* Copper, steam and cooling towers behind the band, dimmed so the text stays easy to read. */}
-          <Film name="film-thermal" className="absolute inset-0 size-full object-cover opacity-60" />
+          <Film name="film-thermal" className="opacity-60" />
           <div aria-hidden="true" className="absolute inset-0 bg-[linear-gradient(180deg,rgba(10,27,51,0.66)_0%,rgba(10,27,51,0.86)_45%,rgba(10,27,51,0.96)_100%)]" />
           <div aria-hidden="true" className="blueprint-dark absolute inset-0" />
           <div className="relative mx-auto max-w-[1280px] px-4 sm:px-8">

@@ -129,5 +129,16 @@ details[open] .faq-plus { transform: rotate(45deg); }
   background-size: 32px 32px;
 }
 
+/* A 16:9 film covering its frame: centered, at least as wide and as tall as the frame. */
+.film-cover {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  max-width: none;
+  width: max(100cqw, 100cqh * 16 / 9);
+  height: max(100cqh, 100cqw * 9 / 16);
+  transform: translate(-50%, -50%);
+}
+
 .no-scrollbar { scrollbar-width: none; }
 .no-scrollbar::-webkit-scrollbar { display: none; }

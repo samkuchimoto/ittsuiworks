@@ -11,13 +11,14 @@ export function Film({
   name,
   alt,
   play,
-  className = "size-full object-cover",
+  className = "",
 }: {
   /** public/media/<name>.mp4 and <name>-poster.webp */
   name: string;
   /** Description for a story film. Omit for a background film, which is hidden from screen readers. */
   alt?: string;
   play?: string;
+  /** Extra classes for the video, e.g. opacity. */
   className?: string;
 }) {
   const ref = useRef<HTMLVideoElement>(null);
@@ -53,11 +54,14 @@ export function Film({
   };
 
   const decorative = !alt;
+  // The film fills its parent (which must be positioned) at 16:9, cropping the overflow. Sized with
+  // container units rather than object-fit alone, so every phone browser fills the frame.
   return (
     <>
+      <div aria-hidden={decorative || undefined} className="absolute inset-0 overflow-hidden [container-type:size]">
       <video
         ref={ref}
-        className={className}
+        className={`film-cover object-cover ${className}`}
         src={`/media/${name}.mp4`}
         poster={`/media/${name}-poster.webp`}
         muted
@@ -65,8 +69,8 @@ export function Film({
         playsInline
         preload="none"
         aria-label={alt}
-        aria-hidden={decorative || undefined}
       />
+      </div>
       {held && !decorative && play && (
         <button type="button" onClick={start} className="absolute right-5 top-5 z-10 inline-flex items-center gap-2 rounded-full bg-white/90 px-4 py-2 text-sm font-semibold text-navy">
           <PlayIcon className="size-3.5" /> {play}
