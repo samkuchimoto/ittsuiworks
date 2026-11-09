@@ -140,7 +140,11 @@ export default async function Home({ params }: PageProps<"/[lang]">) {
         </section>
 
         {/* The bottleneck, from first principles: projects are signed with money and finished by hands. */}
-        <section id="bottleneck" aria-labelledby="bottleneck-title" className="blueprint-dark relative mt-16 overflow-hidden bg-navy-deep py-20 text-white lg:mt-24 lg:py-28">
+        <section id="bottleneck" aria-labelledby="bottleneck-title" className="relative mt-16 overflow-hidden bg-navy-deep py-20 text-white lg:mt-24 lg:py-28">
+          {/* Copper, steam and cooling towers behind the band, dimmed so the text stays easy to read. */}
+          <Film name="film-thermal" className="absolute inset-0 size-full object-cover opacity-60" />
+          <div aria-hidden="true" className="absolute inset-0 bg-[linear-gradient(180deg,rgba(10,27,51,0.66)_0%,rgba(10,27,51,0.86)_45%,rgba(10,27,51,0.96)_100%)]" />
+          <div aria-hidden="true" className="blueprint-dark absolute inset-0" />
           <div className="relative mx-auto max-w-[1280px] px-4 sm:px-8">
             <div className="grid gap-8 lg:grid-cols-[1.15fr_1fr] lg:items-end lg:gap-16">
               <div>
@@ -331,10 +335,10 @@ export default async function Home({ params }: PageProps<"/[lang]">) {
           </div>
         </section>
 
-        {/* The night film. */}
+        {/* The story film: night shift to morning meeting. */}
         <section aria-labelledby="film-title" className="relative bg-navy-deep text-white">
-          <div className="relative h-[68svh] max-h-[760px] min-h-[440px] overflow-hidden">
-            <Film alt={t.film.alt} play={t.film.play} />
+          <div className="relative h-[72svh] max-h-[800px] min-h-[460px] overflow-hidden">
+            <Film name="film-story" alt={t.film.alt} play={t.film.play} />
             <div aria-hidden="true" className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,rgba(10,27,51,0.15)_0%,rgba(10,27,51,0)_35%,rgba(10,27,51,0.88)_100%)]" />
             <div className="pointer-events-none absolute inset-x-0 bottom-0">
               <div className="mx-auto max-w-[1280px] px-4 pb-12 sm:px-8 lg:pb-16">

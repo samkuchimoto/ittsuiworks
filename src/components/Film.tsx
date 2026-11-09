@@ -4,10 +4,22 @@ import { useEffect, useRef, useState } from "react";
 import { PlayIcon } from "./Icons";
 
 /**
- * The night film: silent, looping, and playing only while on screen. Visitors who asked for
- * reduced motion or data saving see the still frame and a play button instead.
+ * A silent looping film that plays only while on screen. Visitors who asked for reduced motion or data
+ * saving see the still frame; a story film then offers a play button, a background film stays still.
  */
-export function Film({ alt, play }: { alt: string; play: string }) {
+export function Film({
+  name,
+  alt,
+  play,
+  className = "size-full object-cover",
+}: {
+  /** public/media/<name>.mp4 and <name>-poster.webp */
+  name: string;
+  /** Description for a story film. Omit for a background film, which is hidden from screen readers. */
+  alt?: string;
+  play?: string;
+  className?: string;
+}) {
   const ref = useRef<HTMLVideoElement>(null);
   const [held, setHeld] = useState(false);
 
@@ -40,24 +52,26 @@ export function Film({ alt, play }: { alt: string; play: string }) {
     video.play().then(() => setHeld(false)).catch(() => {});
   };
 
+  const decorative = !alt;
   return (
-    <div className="relative size-full">
+    <>
       <video
         ref={ref}
-        className="size-full object-cover"
-        src="/media/film-night.mp4"
-        poster="/media/film-night-poster.webp"
+        className={className}
+        src={`/media/${name}.mp4`}
+        poster={`/media/${name}-poster.webp`}
         muted
         loop
         playsInline
         preload="none"
         aria-label={alt}
+        aria-hidden={decorative || undefined}
       />
-      {held && (
-        <button type="button" onClick={start} className="absolute right-5 top-5 inline-flex items-center gap-2 rounded-full bg-white/90 px-4 py-2 text-sm font-semibold text-navy">
+      {held && !decorative && play && (
+        <button type="button" onClick={start} className="absolute right-5 top-5 z-10 inline-flex items-center gap-2 rounded-full bg-white/90 px-4 py-2 text-sm font-semibold text-navy">
           <PlayIcon className="size-3.5" /> {play}
         </button>
       )}
-    </div>
+    </>
   );
 }

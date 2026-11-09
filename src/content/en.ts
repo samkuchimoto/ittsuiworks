@@ -167,7 +167,7 @@ export const en = {
   film: {
     title: "Air kept cold. Servers kept running. Ships kept moving.",
     text: "The AI age runs on the people who do this work. We work for them, and for the companies that employ them.",
-    alt: "At night, technicians check a rooftop chiller, walk a data hall and turn a valve in a ship's engine room, then meet in a glass office.",
+    alt: "Through the night, technicians check a rooftop chiller, walk a data hall and turn a valve in a ship's engine room. At dawn they meet over the harbor, a captain looks out from the bridge, and the day ends with a handshake and a conversation over coffee.",
     play: "Play film",
   },
   process: {
