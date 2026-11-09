@@ -1,0 +1,125 @@
+@import "tailwindcss";
+
+@theme {
+  --color-navy: #0f2747;
+  --color-navy-deep: #0a1b33;
+  --color-ink: #0d2140;
+  --color-mute: #4b5e79;
+  --color-orange: #c8461b;
+  --color-orange-deep: #a5370f;
+  --color-amber: #e59a3c;
+  --color-sky: #eef4fa;
+  --color-mist: #f6f9fc;
+  --color-line: #d6e0ec;
+
+  --font-display: var(--font-newsreader), "Shippori Mincho", Georgia, serif;
+  --font-sans: var(--font-plex), var(--font-plex-jp), system-ui, sans-serif;
+}
+
+/* Hero: two photos cross-fade while both drift slowly. Still for visitors who asked for less motion. */
+@keyframes drift {
+  from { transform: scale(1.02) translate3d(0, 0, 0); }
+  to { transform: scale(1.08) translate3d(-1.2%, -0.8%, 0); }
+}
+@keyframes swap {
+  0%, 42% { opacity: 0; }
+  50%, 92% { opacity: 1; }
+  100% { opacity: 0; }
+}
+.hero-a { animation: drift 24s ease-in-out infinite alternate; }
+.hero-b { opacity: 0; animation: swap 18s ease-in-out infinite, drift 24s ease-in-out infinite alternate-reverse; }
+@media (prefers-reduced-motion: reduce) {
+  .hero-a, .hero-b { animation: none; }
+}
+
+.font-display { font-weight: 500; }
+html[lang="ja"] .font-display { font-weight: 600; letter-spacing: 0.01em; font-feature-settings: "palt" 1; }
+
+/* Japanese pages read in a Mincho for headings and Plex Sans JP for text. */
+html[lang="ja"] {
+  --font-display: var(--font-mincho), "Hiragino Mincho ProN", "Yu Mincho", serif;
+  --font-sans: var(--font-plex-jp), var(--font-plex), "Hiragino Sans", "Yu Gothic", system-ui, sans-serif;
+  line-break: strict;
+}
+
+html {
+  scroll-behavior: smooth;
+  scroll-padding-top: 76px;
+  -webkit-text-size-adjust: 100%;
+}
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+}
+
+body {
+  background: #fff;
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+html[lang="ja"] body { letter-spacing: 0.02em; }
+
+::selection { background: var(--color-navy); color: #fff; }
+
+:focus-visible {
+  outline: 2px solid var(--color-orange);
+  outline-offset: 3px;
+}
+
+/* Headings never break a word across lines; Japanese keeps phrases together where the browser can. */
+h1, h2, h3 { text-wrap: balance; }
+html[lang="ja"] h1, html[lang="ja"] h2 { word-break: keep-all; overflow-wrap: anywhere; }
+p { text-wrap: pretty; }
+
+/* Content shows without JavaScript; with it, sections rise in as they reach the screen. */
+.js [data-reveal] {
+  opacity: 0;
+  transform: translateY(18px);
+  transition: opacity 0.8s cubic-bezier(0.2, 0.7, 0.2, 1), transform 0.8s cubic-bezier(0.2, 0.7, 0.2, 1);
+  transition-delay: var(--delay, 0ms);
+}
+.js [data-reveal].is-in { opacity: 1; transform: none; }
+@media (prefers-reduced-motion: reduce) {
+  .js [data-reveal] { opacity: 1; transform: none; transition: none; }
+  .motion-safe-only { animation: none !important; }
+}
+
+/* Form fields. */
+.field {
+  width: 100%;
+  border: 1px solid var(--color-line);
+  background: #fff;
+  border-radius: 6px;
+  padding: 0.75rem 0.9rem;
+  font-size: 1rem;
+  color: var(--color-ink);
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.field:hover { border-color: #aebfd3; }
+.field:focus { outline: none; border-color: var(--color-navy); box-shadow: 0 0 0 3px rgb(15 39 71 / 0.12); }
+.field[aria-invalid="true"] { border-color: var(--color-orange); box-shadow: 0 0 0 3px rgb(200 70 27 / 0.12); }
+select.field {
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' fill='none'%3E%3Cpath d='M1 1.5 6 6.5l5-5' stroke='%230f2747' stroke-width='1.6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.9rem center;
+  padding-right: 2.4rem;
+}
+
+/* The FAQ marker turns into a minus when open. */
+details > summary { list-style: none; }
+details > summary::-webkit-details-marker { display: none; }
+details[open] .faq-plus { transform: rotate(45deg); }
+
+/* A fine blueprint grid, used behind the pair section. */
+.blueprint {
+  background-image:
+    linear-gradient(rgb(15 39 71 / 0.06) 1px, transparent 1px),
+    linear-gradient(90deg, rgb(15 39 71 / 0.06) 1px, transparent 1px);
+  background-size: 32px 32px;
+}
+
+.no-scrollbar { scrollbar-width: none; }
+.no-scrollbar::-webkit-scrollbar { display: none; }
