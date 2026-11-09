@@ -139,8 +139,58 @@ export default async function Home({ params }: PageProps<"/[lang]">) {
           </div>
         </section>
 
-        {/* Why Ittsui Works: four points beside the human handshake. */}
-        <section id="why" aria-labelledby="why-title" className="py-20 lg:py-28">
+        {/* The bottleneck, from first principles: projects are signed with money and finished by hands. */}
+        <section id="bottleneck" aria-labelledby="bottleneck-title" className="blueprint-dark relative mt-16 overflow-hidden bg-navy-deep py-20 text-white lg:mt-24 lg:py-28">
+          <div className="relative mx-auto max-w-[1280px] px-4 sm:px-8">
+            <div className="grid gap-8 lg:grid-cols-[1.15fr_1fr] lg:items-end lg:gap-16">
+              <div>
+                <Label light>{t.bottleneck.label}</Label>
+                <Title id="bottleneck-title" light className="lg:text-[58px]">
+                  {t.bottleneck.title}
+                </Title>
+              </div>
+              <p className="max-w-[34rem] text-[17.5px] leading-relaxed text-white/75">{t.bottleneck.intro}</p>
+            </div>
+
+            <div data-reveal className="mt-16">
+              <ol className="relative grid grid-cols-5">
+                <li aria-hidden="true" className="absolute left-[10%] right-[10%] top-[22px] h-px bg-white/25" />
+                {t.bottleneck.chain.map((step, i) => {
+                  const waiting = i >= 1 && i <= 3;
+                  return (
+                    <li key={step} className="relative flex flex-col items-center text-center">
+                      <span
+                        className={`font-display grid size-11 place-items-center rounded-full text-[18px] ${waiting ? "bg-orange text-white shadow-[0_0_0_6px_rgb(200_70_27/0.22)]" : "bg-navy text-white/80 ring-1 ring-white/30"}`}
+                      >
+                        {i + 1}
+                      </span>
+                      <span className={`mt-3 text-[13.5px] font-semibold sm:text-[16px] ${waiting ? "text-white" : "text-white/65"}`}>{step}</span>
+                    </li>
+                  );
+                })}
+              </ol>
+              <div className="grid grid-cols-5">
+                <div className="col-span-3 col-start-2 px-[8%]">
+                  <div aria-hidden="true" className="mt-4 h-4 rounded-b-xl border-x-2 border-b-2 border-amber/80" />
+                  <p className="mt-3 text-center text-[14px] font-bold tracking-wide text-amber sm:text-[16px]">{t.bottleneck.bracket}</p>
+                </div>
+              </div>
+            </div>
+
+            <ol className="mt-16 grid gap-x-10 gap-y-10 sm:grid-cols-2 lg:grid-cols-4">
+              {t.bottleneck.items.map((item, i) => (
+                <li key={item.title} data-reveal style={delay(i)} className="border-t border-white/15 pt-6">
+                  <span className="font-display text-[40px] leading-none text-amber">0{i + 1}</span>
+                  <h3 className="mt-4 text-[18.5px] font-bold">{item.title}</h3>
+                  <p className="mt-2 text-[15.5px] leading-relaxed text-white/75">{item.text}</p>
+                </li>
+              ))}
+            </ol>
+          </div>
+        </section>
+
+        {/* Why Ittsui Works: four first principles beside the human handshake. */}
+        <section id="why" aria-labelledby="why-title" className="scroll-mt-16 py-20 lg:py-28">
           <div className="mx-auto grid max-w-[1280px] gap-14 px-4 sm:px-8 lg:grid-cols-12 lg:gap-16">
             <div className="lg:col-span-5">
               <div data-reveal className="relative lg:sticky lg:top-28">

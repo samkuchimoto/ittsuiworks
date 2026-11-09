@@ -23,7 +23,7 @@ export const en = {
     { label: "FAQ", href: "#faq" },
   ],
   hero: {
-    kicker: "One account manager. Every conversation.",
+    kicker: "The AI age is built by hand.",
     title: ["Your next clients.", "Your next technicians."],
     lead: "We find the buyers, book the meetings and recruit the crews for commercial HVAC, data center and marine companies in the USA and Japan. You speak with one person who knows your business. AI does everything else.",
     primary: "Book a free consultation",
@@ -35,34 +35,62 @@ export const en = {
     language: "Language",
   },
   facts: ["USA and Japan", "HVAC, data centers and marine", "One account manager per client"],
+  bottleneck: {
+    label: "The bottleneck",
+    title: "The bottleneck is not money.|It is hands.",
+    intro:
+      "A data center, a chip fab or a ship can be ordered with a signature. It is built, powered and cooled by electricians, HVAC and cooling technicians and marine engineers. That is where projects stall, and that is where we work.",
+    chain: ["Signed", "Built", "Powered", "Cooled", "Running"],
+    bracket: "All three wait on skilled hands",
+    items: [
+      {
+        title: "Real projects only",
+        text: "Many announced projects never get power, a budget or a start date. Before we book a meeting, we check all three.",
+      },
+      {
+        title: "No waiting between steps",
+        text: "Most of a hiring or sales process is time spent waiting for the next step. AI moves every lead and candidate forward, at any hour.",
+      },
+      {
+        title: "Power is the new constraint",
+        text: "New data centers and fabs wait for power and cooling. Both are installed by high-voltage electricians and cooling technicians, the people we recruit.",
+      },
+      {
+        title: "Every search makes the next one faster",
+        text: "Qualified buyers and screened technicians, with their consent, stay in our records. Your next search starts ahead, not from zero.",
+      },
+    ],
+  },
   why: {
     label: "Why Ittsui Works",
-    title: "Built around one person who knows your business",
-    intro: "Most agencies hand you a portal. We give you a person, and put AI to work behind them.",
+    title: "Built from first principles",
+    intro:
+      "We started from one question: what actually slows a technical company down? Finding the right buyers, and finding the right hands. Everything else is waiting and paperwork, and AI can carry that.",
     image: { name: "meeting-us", alt: "An account manager shakes hands with a facility engineer in a bright office" },
     items: [
       {
-        title: "One person, every conversation",
-        text: "From the first call, one account manager is your contact. They learn your trade, your region and your goals, and they answer you themselves.",
+        title: "One person, no layers",
+        text: "One account manager is your contact from the first call and decides with you on the call. No chain of approvals between you and the work.",
       },
       {
-        title: "AI does the groundwork",
-        text: "Research, lead scoring, outreach drafts, candidate screening and record keeping run in the background, around the clock.",
+        title: "AI works 168 hours a week",
+        text: "Research, lead scoring, outreach drafts, candidate screening and record keeping run every hour of the week, in English and Japanese.",
       },
       {
-        title: "Meetings land in your calendar",
-        text: "Ittsui, our own scheduling app, books each meeting into your calendar, sends the reminders and handles rescheduling. Every email thread comes with a short summary.",
+        title: "Everything under one roof",
+        text: "Leads, meetings, recruiting and our own scheduling app, Ittsui, which books each meeting into your calendar. No hand-offs between agencies, so nothing gets lost.",
       },
       {
-        title: "Two countries, two languages",
-        text: "We work in the USA and Japan, in English and Japanese, so you can find clients or technicians on either side of the Pacific.",
+        title: "Weekly iterations",
+        text: "Every week we keep what worked, change what did not and run again. The plan improves in weeks, not quarters.",
       },
     ],
   },
   pair: {
     label: "The name",
     title: "Ittsui: a pair that acts as one",
-    intro: "Ittsui (一対) is Japanese for a matched pair. Here, the pair is a person and an AI, each doing what it does best.",
+    intro:
+      "Ittsui (一対) is Japanese for a matched pair. As machines write more of the world's messages, a real person who answers becomes rare. So our pair is a person for every conversation, and an AI for everything else.",
     person: {
       title: "Your account manager",
       items: [
@@ -89,7 +117,7 @@ export const en = {
     items: [
       {
         title: "Lead generation",
-        text: "We find the facility managers, data center operators and shipowners who need your work, and qualify them before anyone reaches out.",
+        text: "We find the facility managers, data center and fab builders and shipowners who need your work, and check that each project has power, a budget and a start date before anyone reaches out.",
       },
       {
         title: "Appointment setting",
@@ -104,7 +132,8 @@ export const en = {
   sectors: {
     label: "Industries",
     title: "Three industries. Nothing else.",
-    intro: "Staying with three trades means we know the work, the buyers and the certifications.",
+    intro:
+      "Staying with three trades means we know the work, the buyers and the certifications. All three sit where the AI age meets physics: power, heat and steel.",
     find: "Clients we find",
     recruit: "Technicians we recruit",
     certs: "Certifications we check",
@@ -113,7 +142,7 @@ export const en = {
         id: "hvac",
         title: "Commercial HVAC",
         image: { name: "hvac-us", alt: "An HVAC technician opens a valve on a rooftop chiller" },
-        find: ["Property and facility managers", "General contractors", "Hospitals, campuses and offices"],
+        find: ["Property and facility managers", "Chip fabs and cleanrooms", "General contractors"],
         recruit: ["Service technicians", "Installers", "Controls specialists"],
         certs: "EPA 608 and NATE in the USA. Refrigeration machinery chief engineer (冷凍機械責任者) in Japan.",
       },
@@ -121,8 +150,8 @@ export const en = {
         id: "data-centers",
         title: "Data centers",
         image: { name: "datacenter", alt: "A technician inspects a liquid cooling manifold in a data hall" },
-        find: ["Data center operators", "Colocation providers", "Critical facilities managers"],
-        recruit: ["Critical facilities technicians", "Chiller and liquid cooling specialists", "Electrical technicians"],
+        find: ["Data center operators and developers", "Colocation providers", "Power and cooling contractors"],
+        recruit: ["Critical facilities technicians", "Chiller and liquid cooling specialists", "High-voltage electricians and fiber technicians"],
         certs: "EPA 608 and state electrical licenses in the USA. Electrician (電気工事士) and refrigeration licenses in Japan.",
       },
       {
@@ -137,7 +166,7 @@ export const en = {
   },
   film: {
     title: "Air kept cold. Servers kept running. Ships kept moving.",
-    text: "The people who do this work, and the companies that employ them, are who we work for.",
+    text: "The AI age runs on the people who do this work. We work for them, and for the companies that employ them.",
     alt: "At night, technicians check a rooftop chiller, walk a data hall and turn a valve in a ship's engine room, then meet in a glass office.",
     play: "Play film",
   },
@@ -145,15 +174,15 @@ export const en = {
     label: "How it works",
     title: "From the first call to the first meeting",
     steps: [
-      { title: "Free consultation", text: "A call with your account manager about your trade, your region and what you need: clients, technicians or both." },
+      { title: "Free consultation", text: "A call with your account manager about your trade, your sites and what is holding them back: clients, technicians or both." },
       { title: "Written quote", text: "You receive a quote with every fee in writing. Nothing starts before you sign it." },
       { title: "AI gets to work", text: "AI researches, qualifies and screens. Ittsui books the meetings into your calendar." },
-      { title: "Weekly review", text: "Each week, your account manager goes over meetings and candidates with you and adjusts the plan." },
+      { title: "Weekly iteration", text: "Each week, your account manager goes over meetings and candidates with you, keeps what worked, changes what did not and runs again." },
     ],
   },
   fees: {
     label: "Fees",
-    title: "Clear fees, tied to results",
+    title: "Priced on results, not hours",
     items: [
       { big: "Free", text: "The first consultation, with no obligation." },
       { big: "In writing", text: "Every fee is in your quote before any work starts." },
@@ -172,7 +201,14 @@ export const en = {
     title: "Questions, answered",
     items: [
       { q: "Which countries do you cover?", a: "The USA and Japan, and only those two." },
-      { q: "Which industries?", a: "Commercial HVAC, data centers and marine. We stay with these three so we know them well." },
+      {
+        q: "Which industries?",
+        a: "Commercial HVAC, data centers and marine. In all three the bottleneck is the same: skilled hands for power, cooling and machinery. Knowing three trades deeply beats knowing thirty on the surface.",
+      },
+      {
+        q: "How do you know a project is real?",
+        a: "Before we book a meeting, we check that the project has power, an approved budget and a start date. Projects missing one of the three wait until they have it.",
+      },
       { q: "Who will we deal with?", a: "One account manager, from the first call. When you have a question, a person answers." },
       {
         q: "What does the AI do?",
