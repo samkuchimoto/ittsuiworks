@@ -37,5 +37,5 @@ function prefersJapanese(request: NextRequest) {
 
 export const config = {
   // Skip API routes, Next internals, metadata files and anything with a file extension.
-  matcher: ["/((?!api|_next|icon|apple-icon|.*\..*).*)"],
+  matcher: ["/((?!api|_next|icon|apple-icon|.*\\..*).*)"],
 };
