@@ -1,60 +1,44 @@
 import type { Metadata } from "next";
-import type { CSSProperties, ReactNode } from "react";
+import type { CSSProperties } from "react";
 import { notFound } from "next/navigation";
-import { getDictionary } from "@/content";
+import { fill, getDictionary } from "@/content";
+import { AlertForm } from "@/components/Forms";
 import { Film } from "@/components/Film";
 import { Footer } from "@/components/Footer";
 import { NavBar, TopBar } from "@/components/Header";
 import { ArrowIcon, CheckIcon, PlusIcon } from "@/components/Icons";
 import { LangSwitch } from "@/components/LangSwitch";
-import { LeadForm } from "@/components/LeadForm";
+import { LatestJobs } from "@/components/LatestJobs";
 import { Mark } from "@/components/Logo";
 import { Photo } from "@/components/Photo";
+import { Cta, Label, Title } from "@/components/Typo";
+import { PRICING, collectsSeekers, paymentsOn } from "@/lib/config";
+import { countryOptions } from "@/lib/countries";
+import { money } from "@/lib/format";
+import { alternates } from "@/lib/seo";
 import { BRAND, EMAIL, SITE_URL, isLocale, pathFor } from "@/lib/site";
 
 export async function generateMetadata({ params }: PageProps<"/[lang]">): Promise<Metadata> {
   const { lang } = await params;
   if (!isLocale(lang)) return {};
-  return {
-    alternates: {
-      canonical: pathFor(lang),
-      languages: { en: "/", ja: "/ja", "x-default": "/" },
-    },
-  };
+  return { alternates: alternates(lang, "/") };
 }
 
 const delay = (i: number) => ({ "--delay": `${i * 90}ms` }) as CSSProperties;
-
-function Label({ children, light = false, center = false }: { children: ReactNode; light?: boolean; center?: boolean }) {
-  return (
-    <p className={`flex items-center gap-3 text-[13px] font-bold uppercase tracking-[0.2em] ${light ? "text-amber" : "text-orange"} ${center ? "justify-center" : ""}`}>
-      <span aria-hidden="true" className={`h-px w-8 ${light ? "bg-amber" : "bg-orange"}`} />
-      {children}
-    </p>
-  );
-}
-
-function Title({ id, children, light = false, className = "" }: { id?: string; children: ReactNode; light?: boolean; className?: string }) {
-  return (
-    <h2 id={id} className={`font-display mt-4 text-[34px] leading-[1.1] sm:text-[44px] lg:text-[52px] ${light ? "text-white" : "text-navy"} ${className}`}>
-      {/* A "|" in the copy marks a deliberate line break. */}
-      {typeof children === "string" && children.includes("|")
-        ? children.split("|").map((line) => (
-            <span key={line} className="block">
-              {line}
-            </span>
-          ))
-        : children}
-    </h2>
-  );
-}
 
 export default async function Home({ params }: PageProps<"/[lang]">) {
   const { lang } = await params;
   if (!isLocale(lang)) notFound();
   const t = getDictionary(lang);
-  const privacy = pathFor(lang, "/privacy");
   const [heroA, heroB] = t.hero.images;
+  const at = (path: string) => pathFor(lang, path);
+  // Prices show only once Samuel has approved them and Stripe is connected.
+  const priced = paymentsOn();
+  const leadPrice = lang === "ja" ? money(PRICING.lead.JPY, "JPY", lang) : money(PRICING.lead.USD, "USD", lang);
+  const sponsorPrice = lang === "ja" ? money(PRICING.sponsor.JPY, "JPY", lang) : money(PRICING.sponsor.USD, "USD", lang);
+  // Japanese visitors see job alerts once the MHLW notification is filed (JAPAN_SEEKER_DATA).
+  const alertsHere = lang !== "ja" || collectsSeekers("JP");
+  const alertCountries = countryOptions(lang).filter(([code]) => collectsSeekers(code));
 
   const organization = {
     "@context": "https://schema.org",
@@ -65,20 +49,27 @@ export default async function Home({ params }: PageProps<"/[lang]">) {
     logo: `${SITE_URL}/apple-icon.png`,
     email: EMAIL,
     description: t.meta.description,
-    areaServed: ["US", "JP"],
     parentOrganization: { "@type": "Organization", name: "Kuchimoto LLC" },
+  };
+  const website = {
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    name: BRAND,
+    url: SITE_URL,
+    potentialAction: { "@type": "SearchAction", target: `${SITE_URL}/jobs?q={search_term_string}`, "query-input": "required name=search_term_string" },
   };
 
   return (
     <>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(organization) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(website) }} />
       <TopBar lang={lang} t={t.header} />
       <NavBar lang={lang} items={t.nav} />
 
       <main id="top">
-        {/* Hero: bright sky, navy type on the left, the two entrances stacked below. */}
+        {/* Hero: bright sky, navy type on the left, the two entrances stacked below, buyers on a third line. */}
         <section aria-labelledby="hero-title" className="relative bg-white">
-          <div className="relative overflow-hidden lg:h-[clamp(600px,calc(100svh-150px),780px)]">
+          <div className="relative overflow-hidden lg:h-[clamp(620px,calc(100svh-150px),800px)]">
             <div className="relative aspect-[16/10] overflow-hidden sm:aspect-[16/8] lg:absolute lg:inset-0 lg:aspect-auto">
               <Photo name={heroA.name} alt={heroA.alt} priority sizes="100vw" className="hero-a absolute inset-0 size-full object-cover object-[72%_center]" />
               <Photo name={heroB.name} alt="" sizes="100vw" className="hero-b absolute inset-0 size-full object-cover object-[72%_center]" />
@@ -100,10 +91,10 @@ export default async function Home({ params }: PageProps<"/[lang]">) {
                     </span>
                   ))}
                 </h1>
-                <p className="mt-6 max-w-[560px] text-[17px] leading-[1.75] text-ink/85 lg:text-[18px]">{t.hero.lead}</p>
+                <p className="mt-6 max-w-[580px] text-[17px] leading-[1.75] text-ink/85 lg:text-[18px]">{t.hero.lead}</p>
                 <div className="mt-8 flex flex-col gap-3 sm:max-w-[360px]">
                   <a
-                    href="#contact"
+                    href={at("/post-job")}
                     className="group flex items-center justify-between gap-4 rounded-lg bg-orange px-6 py-[18px] text-[17px] font-semibold text-white shadow-[0_16px_36px_-14px_rgb(200_70_27/0.85)] transition hover:-translate-y-0.5 hover:bg-orange-deep"
                   >
                     {t.hero.primary}
@@ -112,7 +103,7 @@ export default async function Home({ params }: PageProps<"/[lang]">) {
                     </span>
                   </a>
                   <a
-                    href="#technicians"
+                    href={at("/jobs")}
                     className="group flex items-center justify-between gap-4 rounded-lg bg-navy px-6 py-[18px] text-[17px] font-semibold text-white shadow-[0_16px_36px_-16px_rgb(15_39_71/0.9)] transition hover:-translate-y-0.5 hover:bg-navy-deep"
                   >
                     {t.hero.secondary}
@@ -121,6 +112,12 @@ export default async function Home({ params }: PageProps<"/[lang]">) {
                     </span>
                   </a>
                 </div>
+                <p className="mt-5 text-[15.5px] text-ink/80">
+                  {t.hero.projectQuestion}{" "}
+                  <a href={at("/post-project")} className="font-semibold text-navy underline underline-offset-4 hover:text-orange">
+                    {t.hero.projectLink}
+                  </a>
+                </p>
               </div>
             </div>
           </div>
@@ -139,13 +136,13 @@ export default async function Home({ params }: PageProps<"/[lang]">) {
           </div>
         </section>
 
+        {/* Live jobs, loaded after the page; hidden when there are none. */}
+        <LatestJobs lang={lang} t={{ latest: t.latest, ui: t.ui }} />
+
         {/* The bottleneck, from first principles: projects are signed with money and finished by hands. */}
         <section id="bottleneck" aria-labelledby="bottleneck-title" className="relative mt-16 overflow-hidden bg-navy-deep py-20 text-white lg:mt-24 lg:py-28">
-          {/* Copper, steam and cooling towers behind the headline and the chain, fading into navy where the
-              four points sit. Kept to the top of the band so a tall phone layout does not blow the film up. */}
           <div className="absolute inset-x-0 top-0 h-[92svh] max-h-[980px] min-h-[620px]">
             <Film name="film-thermal" />
-            {/* Darker on the left, where the headline sits; light in the middle so the film reads. */}
             <div aria-hidden="true" className="absolute inset-0 bg-[linear-gradient(90deg,rgba(10,27,51,0.62)_0%,rgba(10,27,51,0.3)_55%,rgba(10,27,51,0.5)_100%)]" />
             <div aria-hidden="true" className="absolute inset-0 bg-[linear-gradient(180deg,rgba(10,27,51,0.35)_0%,rgba(10,27,51,0.15)_40%,rgba(10,27,51,0.75)_78%,#0a1b33_100%)]" />
           </div>
@@ -198,94 +195,70 @@ export default async function Home({ params }: PageProps<"/[lang]">) {
           </div>
         </section>
 
-        {/* Why Ittsui Works: four first principles beside the human handshake. */}
-        <section id="why" aria-labelledby="why-title" className="scroll-mt-16 py-20 lg:py-28">
-          <div className="mx-auto grid max-w-[1280px] gap-14 px-4 sm:px-8 lg:grid-cols-12 lg:gap-16">
-            <div className="lg:col-span-5">
-              <div data-reveal className="relative lg:sticky lg:top-28">
-                <div aria-hidden="true" className="absolute -bottom-4 -left-4 size-full rounded-xl border-2 border-navy/15" />
-                <Photo name={t.why.image.name} alt={t.why.image.alt} sizes="(min-width: 1024px) 40vw, 100vw" className="relative aspect-[5/4] w-full rounded-xl object-cover" />
-              </div>
-            </div>
-            <div className="lg:col-span-7">
-              <Label>{t.why.label}</Label>
-              <Title id="why-title">{t.why.title}</Title>
-              <p className="mt-5 max-w-[36rem] text-[17.5px] leading-relaxed text-mute">{t.why.intro}</p>
-              <ol className="mt-12 grid gap-x-10 gap-y-10 sm:grid-cols-2">
-                {t.why.items.map((item, i) => (
-                  <li key={item.title} data-reveal style={delay(i)} className="border-t border-line pt-6">
-                    <span className="font-display text-[44px] leading-none text-orange">0{i + 1}</span>
-                    <h3 className="mt-4 text-[19px] font-bold text-navy">{item.title}</h3>
-                    <p className="mt-2 text-[15.5px] leading-relaxed text-ink/80">{item.text}</p>
-                  </li>
-                ))}
-              </ol>
-            </div>
-          </div>
-        </section>
-
-        {/* The name: a person and an AI, a pair that acts as one. */}
-        <section aria-labelledby="pair-title" className="relative overflow-hidden bg-sky py-20 lg:py-28">
+        {/* How it works: two pairs (a job and a technician, a project and a company), then the buyer's entrance. */}
+        <section id="how" aria-labelledby="how-title" className="relative scroll-mt-16 overflow-hidden bg-sky py-20 lg:py-28">
           <div aria-hidden="true" className="blueprint absolute inset-0 [mask-image:radial-gradient(ellipse_at_center,black_30%,transparent_75%)]" />
           <div className="relative mx-auto max-w-[1280px] px-4 sm:px-8">
-            <div className="mx-auto max-w-[760px] text-center">
-              <Label center>{t.pair.label}</Label>
-              <Title id="pair-title">{t.pair.title}</Title>
-              <p className="mx-auto mt-5 max-w-[40rem] text-[17.5px] leading-relaxed text-mute">{t.pair.intro}</p>
+            <div className="mx-auto max-w-[780px] text-center">
+              <Label center>{t.how.label}</Label>
+              <Title id="how-title">{t.how.title}</Title>
+              <p className="mx-auto mt-5 max-w-[42rem] text-[17.5px] leading-relaxed text-mute">{t.how.intro}</p>
             </div>
             <div className="mt-14 grid gap-6 lg:grid-cols-[1fr_128px_1fr] lg:gap-0">
-              <div data-reveal className="rounded-2xl bg-navy p-8 text-white shadow-[0_40px_80px_-40px_rgb(10_27_51/0.9)] lg:p-11">
-                <span aria-hidden="true" className="block size-4 rounded-full bg-amber" />
-                <h3 className="font-display mt-5 text-[30px] leading-tight lg:text-[34px]">{t.pair.person.title}</h3>
-                <ul className="mt-7 space-y-4">
-                  {t.pair.person.items.map((item) => (
-                    <li key={item} className="flex gap-3 text-[16px] leading-relaxed text-white/90">
-                      <CheckIcon className="mt-1 size-[18px] shrink-0 text-amber" />
-                      {item}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-              <div aria-hidden="true" className="relative hidden items-center justify-center lg:flex">
+              {[
+                { side: t.how.hire, href: at("/post-job"), dark: true },
+                { side: t.how.win, href: at("/companies"), dark: false },
+              ].map(({ side, href, dark }, n) => (
+                <div key={side.title} className={n === 1 ? "lg:col-start-3" : ""}>
+                  <div
+                    data-reveal
+                    style={delay(n)}
+                    className={`flex h-full flex-col rounded-2xl p-8 lg:p-11 ${dark ? "bg-navy text-white shadow-[0_40px_80px_-40px_rgb(10_27_51/0.9)]" : "bg-white shadow-[0_40px_80px_-50px_rgb(15_39_71/0.6)] ring-1 ring-navy/10"}`}
+                  >
+                    <div className="flex items-center justify-between gap-4">
+                      <span aria-hidden="true" className={`block size-4 rounded-full ${dark ? "bg-amber" : "bg-navy"}`} />
+                      <span className={`rounded-full px-3 py-1 text-[12.5px] font-bold uppercase tracking-[0.14em] ${dark ? "bg-white/10 text-amber" : "bg-sky text-orange"}`}>{side.tag}</span>
+                    </div>
+                    <h3 className={`font-display mt-5 text-[30px] leading-tight lg:text-[34px] ${dark ? "" : "text-navy"}`}>{side.title}</h3>
+                    <ol className="mt-7 space-y-6">
+                      {side.steps.map((step, i) => (
+                        <li key={step.title} className="flex gap-4">
+                          <span className={`font-display grid size-9 shrink-0 place-items-center rounded-full text-[17px] ${dark ? "bg-white/10 text-amber" : "bg-sky text-navy"}`}>{i + 1}</span>
+                          <div>
+                            <p className={`text-[17px] font-bold ${dark ? "" : "text-navy"}`}>{step.title}</p>
+                            <p className={`mt-1 text-[15.5px] leading-relaxed ${dark ? "text-white/80" : "text-ink/80"}`}>{step.text}</p>
+                          </div>
+                        </li>
+                      ))}
+                    </ol>
+                    <div className="mt-auto pt-8">
+                      <Cta href={href} tone={dark ? "orange" : "navy"}>
+                        {side.cta}
+                      </Cta>
+                    </div>
+                  </div>
+                </div>
+              ))}
+              <div aria-hidden="true" className="relative hidden items-center justify-center lg:col-start-2 lg:row-start-1 lg:flex">
                 <div className="absolute inset-x-0 top-1/2 border-t-2 border-dashed border-navy/25" />
                 <div className="relative grid size-24 place-items-center rounded-full bg-white shadow-[0_20px_40px_-20px_rgb(15_39_71/0.6)] ring-1 ring-navy/10">
                   <Mark className="size-14" />
                 </div>
               </div>
-              <div data-reveal style={delay(1)} className="rounded-2xl bg-white p-8 shadow-[0_40px_80px_-50px_rgb(15_39_71/0.6)] ring-1 ring-navy/10 lg:p-11">
-                <span aria-hidden="true" className="block size-4 rounded-full bg-navy" />
-                <h3 className="font-display mt-5 text-[30px] leading-tight text-navy lg:text-[34px]">{t.pair.ai.title}</h3>
-                <ul className="mt-7 space-y-4">
-                  {t.pair.ai.items.map((item) => (
-                    <li key={item} className="flex gap-3 text-[16px] leading-relaxed text-ink/85">
-                      <CheckIcon className="mt-1 size-[18px] shrink-0 text-navy" />
-                      {item}
-                    </li>
-                  ))}
-                </ul>
+            </div>
+            <div data-reveal className="mt-6 flex flex-col items-start justify-between gap-5 rounded-2xl bg-white p-7 ring-1 ring-navy/10 sm:flex-row sm:items-center lg:px-11">
+              <div>
+                <p className="font-display text-[26px] leading-tight text-navy">{t.how.buyer.title}</p>
+                <p className="mt-2 max-w-[44rem] text-[15.5px] leading-relaxed text-ink/80">{t.how.buyer.text}</p>
               </div>
+              <Cta href={at("/post-project")} tone="white" className="shrink-0">
+                {t.how.buyer.cta}
+              </Cta>
             </div>
           </div>
         </section>
 
-        {/* What we do. */}
-        <section aria-labelledby="services-title" className="py-20 lg:py-28">
-          <div className="mx-auto max-w-[1280px] px-4 sm:px-8">
-            <Label>{t.services.label}</Label>
-            <Title id="services-title">{t.services.title}</Title>
-            <ol className="mt-12 grid gap-px overflow-hidden rounded-2xl bg-line ring-1 ring-line md:grid-cols-3">
-              {t.services.items.map((item, i) => (
-                <li key={item.title} data-reveal style={delay(i)} className="group bg-white p-8 transition hover:bg-mist lg:p-10">
-                  <span className="text-[13px] font-bold tracking-[0.2em] text-orange">0{i + 1}</span>
-                  <h3 className="font-display mt-5 text-[28px] leading-tight text-navy lg:text-[31px]">{item.title}</h3>
-                  <p className="mt-3 text-[15.5px] leading-relaxed text-ink/80">{item.text}</p>
-                </li>
-              ))}
-            </ol>
-          </div>
-        </section>
-
-        {/* Three industries. Each card is a menu target (#hvac, #data-centers, #marine). */}
+        {/* Three industries. Each card links to its live jobs. */}
         <section aria-labelledby="sectors-title" className="bg-mist py-20 lg:py-28">
           <div className="mx-auto max-w-[1280px] px-4 sm:px-8">
             <div className="grid gap-6 lg:grid-cols-2 lg:items-end">
@@ -311,8 +284,8 @@ export default async function Home({ params }: PageProps<"/[lang]">) {
                     <h3 className="font-display text-[30px] leading-tight text-navy">{sector.title}</h3>
                     <div className="mt-6 grid gap-6 sm:grid-cols-2 lg:grid-cols-1">
                       {[
-                        [t.sectors.find, sector.find],
                         [t.sectors.recruit, sector.recruit],
+                        [t.sectors.find, sector.find],
                       ].map(([title, items]) => (
                         <div key={title as string}>
                           <p className="text-[12.5px] font-bold uppercase tracking-[0.16em] text-orange">{title as string}</p>
@@ -332,6 +305,10 @@ export default async function Home({ params }: PageProps<"/[lang]">) {
                         <span className="font-bold text-navy">{t.sectors.certs}: </span>
                         {sector.certs}
                       </p>
+                      <a href={at(`/jobs?trade=${sector.id}`)} className="mt-4 inline-flex items-center gap-2 text-[15px] font-semibold text-navy underline-offset-4 hover:underline">
+                        {t.sectors.jobs}
+                        <ArrowIcon className="size-4" />
+                      </a>
                     </div>
                   </div>
                 </article>
@@ -356,45 +333,15 @@ export default async function Home({ params }: PageProps<"/[lang]">) {
           </div>
         </section>
 
-        {/* How it works. */}
-        <section id="process" aria-labelledby="process-title" className="py-20 lg:py-28">
-          <div className="mx-auto max-w-[1280px] px-4 sm:px-8">
-            <div className="mx-auto max-w-[760px] text-center">
-              <Label center>{t.process.label}</Label>
-              <Title id="process-title">{t.process.title}</Title>
-            </div>
-            <div className="relative mt-14">
-              <div aria-hidden="true" className="absolute left-7 right-7 top-7 hidden border-t-2 border-dashed border-line lg:block" />
-              <ol className="relative grid gap-10 md:grid-cols-2 lg:grid-cols-4 lg:gap-8">
-                {t.process.steps.map((step, i) => (
-                  <li key={step.title} data-reveal style={delay(i)}>
-                    <span
-                      className={`font-display grid size-14 place-items-center rounded-full text-[24px] ${i === 0 ? "bg-orange text-white" : "bg-white text-navy ring-2 ring-navy"}`}
-                    >
-                      {i + 1}
-                    </span>
-                    <h3 className="mt-6 text-[19px] font-bold text-navy">{step.title}</h3>
-                    <p className="mt-2 text-[15.5px] leading-relaxed text-ink/80">{step.text}</p>
-                  </li>
-                ))}
-              </ol>
-            </div>
-          </div>
-        </section>
-
-        {/* Fees. */}
+        {/* Fees: free to post, pay per lead. Prices appear only once approved and payable. */}
         <section id="fees" aria-labelledby="fees-title" className="bg-sky py-20 lg:py-24">
           <div className="mx-auto grid max-w-[1280px] gap-10 px-4 sm:px-8 lg:grid-cols-[1fr_2fr] lg:items-center lg:gap-14">
             <div>
               <Label>{t.fees.label}</Label>
               <Title id="fees-title">{t.fees.title}</Title>
-              <a
-                href="#contact"
-                className="group mt-8 inline-flex items-center gap-3 rounded-lg bg-orange px-6 py-4 text-[16px] font-semibold text-white shadow-[0_14px_32px_-14px_rgb(200_70_27/0.85)] transition hover:bg-orange-deep"
-              >
+              <Cta href={at("/post-job")} className="mt-8">
                 {t.fees.cta}
-                <ArrowIcon className="size-4 transition group-hover:translate-x-0.5" />
-              </a>
+              </Cta>
             </div>
             <ul className="grid gap-4 sm:grid-cols-3">
               {t.fees.items.map((fee, i) => (
@@ -402,13 +349,15 @@ export default async function Home({ params }: PageProps<"/[lang]">) {
                   <p className="font-display text-[38px] leading-none text-navy lg:text-[42px]">{fee.big}</p>
                   <span aria-hidden="true" className="mt-5 block h-0.5 w-10 bg-orange" />
                   <p className="mt-5 text-[15px] leading-relaxed text-ink/80">{fee.text}</p>
+                  {priced && i === 1 && <p className="mt-4 text-[15px] font-bold text-navy">{fill(t.fees.leadPrice, { price: leadPrice })}</p>}
+                  {priced && i === 0 && <p className="mt-4 text-[14px] text-mute">{fill(t.fees.sponsor, { price: sponsorPrice })}</p>}
                 </li>
               ))}
             </ul>
           </div>
         </section>
 
-        {/* The second entrance: technicians. */}
+        {/* Technicians: job alerts by email (browse only on the Japanese site until the MHLW notification). */}
         <section id="technicians" aria-labelledby="tech-title" className="scroll-mt-16 bg-navy py-20 text-white lg:py-28">
           <div className="mx-auto grid max-w-[1280px] gap-12 px-4 sm:px-8 lg:grid-cols-2 lg:gap-16">
             <div>
@@ -417,16 +366,34 @@ export default async function Home({ params }: PageProps<"/[lang]">) {
                 {t.technicians.title}
               </Title>
               <p className="mt-5 max-w-[34rem] text-[17px] leading-relaxed text-white/80">{t.technicians.text}</p>
+              <a href={at("/jobs")} className="mt-6 inline-flex items-center gap-2 text-[16px] font-semibold text-amber underline-offset-4 hover:underline">
+                {t.technicians.browse}
+                <ArrowIcon className="size-4" />
+              </a>
               <Photo name={t.technicians.image.name} alt={t.technicians.image.alt} sizes="(min-width: 1024px) 45vw, 100vw" className="mt-10 aspect-[16/10] w-full rounded-xl object-cover" />
             </div>
             <div data-reveal className="relative rounded-2xl bg-white p-6 text-ink shadow-[0_40px_90px_-40px_rgb(0_0_0/0.6)] sm:p-9 lg:self-center">
-              <LeadForm kind="technician" lang={lang} t={t.form} privacyHref={privacy} />
+              {alertsHere ? (
+                <>
+                  <p className="font-display mb-6 text-[28px] leading-tight text-navy">{t.alerts.formTitle}</p>
+                  <AlertForm lang={lang} t={{ form: t.form, ui: t.ui, alerts: t.alerts }} countries={alertCountries} />
+                  {!collectsSeekers("JP") && <p className="mt-5 text-[13.5px] text-mute">{t.technicians.japan}</p>}
+                </>
+              ) : (
+                <div className="py-4">
+                  <p className="font-display text-[28px] leading-tight text-navy">{t.technicians.browse}</p>
+                  <p className="mt-3 text-[15.5px] leading-relaxed text-ink/80">{t.technicians.japan}</p>
+                  <Cta href={at("/jobs")} tone="navy" className="mt-6">
+                    {t.technicians.browse}
+                  </Cta>
+                </div>
+              )}
             </div>
           </div>
         </section>
 
         {/* FAQ. */}
-        <section id="faq" aria-labelledby="faq-title" className="py-20 lg:py-28">
+        <section id="faq" aria-labelledby="faq-title" className="scroll-mt-16 py-20 lg:py-28">
           <div className="mx-auto grid max-w-[1280px] gap-10 px-4 sm:px-8 lg:grid-cols-[1fr_2fr] lg:gap-16">
             <div className="lg:sticky lg:top-28 lg:self-start">
               <Label>{t.faq.label}</Label>
@@ -458,51 +425,41 @@ export default async function Home({ params }: PageProps<"/[lang]">) {
           </div>
         </section>
 
-        {/* Company overview (会社概要). */}
+        {/* Company overview (会社概要) and how to reach a person. */}
         <section id="company" aria-labelledby="company-title" className="bg-mist py-20 lg:py-24">
-          <div className="mx-auto max-w-[1280px] px-4 sm:px-8">
-            <Label>{t.company.label}</Label>
-            <Title id="company-title">{t.company.title}</Title>
-            <dl className="mt-10 overflow-hidden rounded-2xl bg-white ring-1 ring-line">
-              {t.company.rows.map(([key, value]) => (
-                <div key={key} className="grid border-b border-line last:border-b-0 sm:grid-cols-[230px_1fr]">
-                  <dt className="bg-sky px-6 pb-1 pt-4 text-[14.5px] font-bold text-navy sm:py-5">{key}</dt>
-                  <dd className="px-6 pb-4 pt-1 text-[15.5px] leading-relaxed sm:py-5">
-                    {value === EMAIL ? (
-                      <a href={`mailto:${EMAIL}`} className="font-semibold text-navy underline underline-offset-4">
-                        {value}
-                      </a>
-                    ) : (
-                      value
-                    )}
-                  </dd>
-                </div>
-              ))}
-            </dl>
-          </div>
-        </section>
-
-        {/* The first entrance: companies book a free consultation. */}
-        <section id="contact" aria-labelledby="contact-title" className="scroll-mt-16 py-20 lg:py-28">
-          <div className="mx-auto grid max-w-[1280px] gap-12 px-4 sm:px-8 lg:grid-cols-[5fr_7fr] lg:gap-16">
+          <div className="mx-auto grid max-w-[1280px] gap-12 px-4 sm:px-8 lg:grid-cols-[2fr_1fr] lg:gap-14">
             <div>
-              <Label>{t.contact.label}</Label>
-              <Title id="contact-title">{t.contact.title}</Title>
-              <p className="mt-5 max-w-[30rem] text-[17.5px] leading-relaxed text-mute">{t.contact.text}</p>
-              <div className="mt-10 rounded-2xl bg-sky p-7">
-                <p className="font-bold text-navy">{t.contact.asideTitle}</p>
-                <ol className="mt-4 space-y-3">
-                  {t.contact.aside.map((line, i) => (
-                    <li key={line} className="flex gap-3 text-[15.5px] leading-relaxed">
-                      <span className="mt-0.5 grid size-6 shrink-0 place-items-center rounded-full bg-navy text-[12px] font-bold text-white">{i + 1}</span>
-                      {line}
-                    </li>
-                  ))}
-                </ol>
-              </div>
+              <Label>{t.company.label}</Label>
+              <Title id="company-title">{t.company.title}</Title>
+              <dl className="mt-10 overflow-hidden rounded-2xl bg-white ring-1 ring-line">
+                {t.company.rows.map(([key, value]) => (
+                  <div key={key} className="grid border-b border-line last:border-b-0 sm:grid-cols-[230px_1fr]">
+                    <dt className="bg-sky px-6 pb-1 pt-4 text-[14.5px] font-bold text-navy sm:py-5">{key}</dt>
+                    <dd className="px-6 pb-4 pt-1 text-[15.5px] leading-relaxed sm:py-5">
+                      {value === EMAIL ? (
+                        <a href={`mailto:${EMAIL}`} className="font-semibold text-navy underline underline-offset-4">
+                          {value}
+                        </a>
+                      ) : (
+                        value
+                      )}
+                    </dd>
+                  </div>
+                ))}
+              </dl>
             </div>
-            <div className="relative rounded-2xl bg-white p-6 shadow-[0_40px_80px_-40px_rgb(15_39_71/0.45)] ring-1 ring-navy/10 sm:p-10">
-              <LeadForm kind="company" lang={lang} t={t.form} privacyHref={privacy} />
+            <div id="contact" className="scroll-mt-24 lg:pt-[92px]">
+              <div className="rounded-2xl bg-navy p-8 text-white">
+                <Label light>{t.contact.label}</Label>
+                <p className="font-display mt-4 text-[28px] leading-tight">{t.contact.title}</p>
+                <p className="mt-3 text-[15.5px] leading-relaxed text-white/80">
+                  {t.contact.text.split(EMAIL)[0]}
+                  <a href={`mailto:${EMAIL}`} className="break-all font-semibold text-amber underline underline-offset-4">
+                    {EMAIL}
+                  </a>
+                  {t.contact.text.split(EMAIL)[1] ?? ""}
+                </p>
+              </div>
             </div>
           </div>
         </section>

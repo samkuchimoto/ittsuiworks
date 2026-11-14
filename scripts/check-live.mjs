@@ -13,7 +13,7 @@ const text = async (path, init) => (await get(path, init)).text();
 // 1. Every page in the sitemap: status, language, title, description, canonical, hreflang, link preview.
 const sitemap = await text("/sitemap.xml");
 const pages = [...sitemap.matchAll(/<loc>([^<]+)<\/loc>/g)].map((m) => new URL(m[1]).pathname);
-check(pages.length >= 4, `sitemap lists ${pages.length} pages`);
+check(pages.length >= 14, `sitemap lists ${pages.length} pages`);
 check((await text("/robots.txt")).includes("sitemap.xml"), "robots.txt points to the sitemap");
 
 const assets = new Set();
@@ -51,7 +51,7 @@ for (const path of pages) {
 
   // Structured data parses.
   const ld = attr(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/);
-  if (ld) check((() => { try { return JSON.parse(ld).name === "Ittsui Works"; } catch { return false; } })(), `${path}: structured data is valid`);
+  if (ld) check((() => { try { const d = JSON.parse(ld); return d.name === "Ittsui Works" || (d["@type"] === "JobPosting" && d.title && d.hiringOrganization?.name); } catch { return false; } })(), `${path}: structured data is valid`);
 }
 
 // 2. Every linked page and file answers, with the right type.
@@ -79,14 +79,28 @@ const notFound = await get("/this-page-does-not-exist");
 const nf = await notFound.text();
 check(notFound.status === 404 && nf.includes("does not exist") && nf.includes("見つかりません"), `unknown page: ${notFound.status}, in both languages`);
 
-// 4. The form endpoint, without sending an email.
-const post = (fields) => { const f = new FormData(); for (const [k, v] of Object.entries(fields)) f.append(k, v); return get("/api/contact", { method: "POST", body: f }); };
-const empty = await post({ kind: "company" });
-const emptyBody = await empty.json().catch(() => ({}));
-check(empty.status === 400 && emptyBody.error === "invalid", `form refuses an empty request (${empty.status} ${emptyBody.error})`);
-const bot = await post({ website: "spam", kind: "company" });
-check(bot.status === 200, `form quietly drops bots (${bot.status})`);
-check((await get("/api/contact")).status === 405, "form endpoint refuses GET");
+// 4. The form endpoints, without sending an email: empty posts are refused, bots dropped, GET refused.
+const post = (url, fields) => { const f = new FormData(); for (const [k, v] of Object.entries(fields)) f.append(k, v); return get(url, { method: "POST", body: f }); };
+for (const url of ["/api/jobs", "/api/apply", "/api/alerts", "/api/projects", "/api/companies"]) {
+  const empty = await post(url, {});
+  const body = await empty.json().catch(() => ({}));
+  check(empty.status === 400 && body.error === "invalid", `${url}: refuses an empty form (${empty.status} ${body.error})`);
+  check((await post(url, { website_url: "spam" })).status === 200, `${url}: quietly drops bots`);
+  check((await get(url)).status === 405, `${url}: refuses GET`);
+}
+
+// 5. Distribution and the daily run.
+const feed = await get("/jobs.xml");
+check(feed.status === 200 && (feed.headers.get("content-type") ?? "").includes("xml") && (await feed.text()).includes("<source>"), "jobs.xml feed answers");
+check((await text("/llms.txt")).includes("Ittsui Works"), "llms.txt answers");
+check((await text("/indexnow.txt")).trim().length === 32, "IndexNow key file answers");
+const latest = await get("/api/jobs/latest");
+check(latest.status === 200 && Array.isArray((await latest.json().catch(() => ({}))).jobs), "latest jobs feed answers");
+const cron = await (await get("/api/cron/daily")).json().catch(() => ({}));
+check(cron.database === true, `database connected (${cron.database})`);
+check(cron.email === true, `email connected (${cron.email})`);
+check(cron.market === undefined, "daily run needs the cron secret");
+console.log(`switches: payments ${cron.payments ? "on" : "off"}, outreach sending ${cron.outreach?.sending ? "on" : "off"}`);
 
 // Report.
 const failed = results.filter((x) => !x.pass);

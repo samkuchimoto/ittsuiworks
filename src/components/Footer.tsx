@@ -1,5 +1,6 @@
 import type { Dict } from "@/content";
 import { EMAIL, pathFor, type Locale } from "@/lib/site";
+import { linkFor } from "./Header";
 import { Wordmark } from "./Logo";
 
 export function Footer({ lang, t, nav, onHome = true }: { lang: Locale; t: Dict["footer"]; nav: Dict["nav"]; onHome?: boolean }) {
@@ -16,11 +17,16 @@ export function Footer({ lang, t, nav, onHome = true }: { lang: Locale; t: Dict[
         <ul className="grid grid-cols-2 gap-x-6 gap-y-3 text-[15px] text-white/80 sm:grid-cols-3 lg:self-start">
           {nav.map((item) => (
             <li key={item.href}>
-              <a href={onHome ? item.href : `${pathFor(lang)}${item.href}`} className="hover:text-white">
+              <a href={linkFor(lang, item.href, onHome)} className="hover:text-white">
                 {item.label}
               </a>
             </li>
           ))}
+          <li>
+            <a href={pathFor(lang, "/terms")} className="hover:text-white">
+              {t.terms}
+            </a>
+          </li>
           <li>
             <a href={pathFor(lang, "/privacy")} className="hover:text-white">
               {t.privacy}
