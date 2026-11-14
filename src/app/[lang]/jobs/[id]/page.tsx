@@ -29,7 +29,8 @@ export async function generateMetadata({ params }: PageProps<"/[lang]/jobs/[id]"
     // One indexed address per job: the language it was written in.
     alternates: alternates(lang, `/jobs/${job.id}`, job.lang === "ja" ? "ja" : "en"),
     robots: isLive(job) ? undefined : { index: false, follow: true },
-    openGraph: { title, description, type: "website" },
+    // A page's openGraph replaces the layout's, so the link preview image is repeated here.
+    openGraph: { title, description, type: "website", siteName: "Ittsui Works", images: [{ url: "/media/og.jpg", width: 1200, height: 630, alt: t.hero.images[0].alt }] },
   };
 }
 
