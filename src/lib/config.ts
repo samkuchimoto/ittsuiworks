@@ -39,17 +39,18 @@ export const LEAD_OFFERS_PER_DAY = 12;
 export const PROJECT_DAYS = 45;
 
 /**
- * Prices. Shown and charged only once Samuel approves them (approved: true) and Stripe is connected
+ * Prices, approved by Samuel on 14 November 2026: 49 USD per lead, 99 USD to feature a job for 30 days, in US dollars
+ * for every country. Shown and charged only while approved is true and Stripe is connected
  * (STRIPE_SECRET_KEY). Until then the site says "free to post" and never shows a price.
  * Market references (Nov 2026): Indeed Sponsored Jobs bill per click or per started application, $5/day minimum;
  * Thumbtack and Angi HVAC leads $15 to $110; Google Local Services HVAC leads about $51.
  */
 export const PRICING = {
-  approved: false,
-  lead: { USD: 49, JPY: 7500 },
-  sponsor: { USD: 99, JPY: 15000 },
+  approved: true,
+  lead: { USD: 49 },
+  sponsor: { USD: 99 },
 } as const;
-export const priceCurrency = (country: string): "USD" | "JPY" => (country === "JP" ? "JPY" : "USD");
+export const priceCurrency = (_country: string): "USD" => "USD";
 /** Local tests run the paid flows against a mock Stripe (STRIPE_MOCK_URL, never set on Vercel). */
 const localMock = () => Boolean(process.env.STRIPE_MOCK_URL?.startsWith("http://localhost"));
 export const paymentsOn = () => (PRICING.approved || localMock()) && Boolean(process.env.STRIPE_SECRET_KEY);
@@ -74,9 +75,9 @@ export const OUTREACH = {
   /** Countries where emailing a business address published on its own website is lawful without prior consent. */
   defaultCountries: ["US", "JP"],
   /** Emails a day: starts low and climbs, so the mailbox earns a sending reputation. */
-  startPerDay: 10,
-  stepPerDay: 5,
-  maxPerDay: 60,
+  startPerDay: 5,
+  stepPerDay: 2,
+  maxPerDay: 40,
   /** Days between the first email and each follow-up. Follow-ups only run when replies can be read (IMAP). */
   followUpDays: [4, 11],
   /** Websites read per daily run to find a published business email. */

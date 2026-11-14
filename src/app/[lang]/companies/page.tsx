@@ -21,7 +21,7 @@ export default async function Companies({ params }: PageProps<"/[lang]/companies
   const { lang } = await params;
   if (!isLocale(lang)) notFound();
   const t = getDictionary(lang);
-  const price = lang === "ja" ? money(PRICING.lead.JPY, "JPY", lang) : money(PRICING.lead.USD, "USD", lang);
+  const price = money(PRICING.lead.USD, "USD", lang);
   return (
     <Shell lang={lang} t={t} current="/companies">
       <PageHead lang={lang} t={t} path="/companies" label={t.companies.label} title={t.companies.title} intro={t.companies.intro} />

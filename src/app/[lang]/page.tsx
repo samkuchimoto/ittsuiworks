@@ -34,8 +34,8 @@ export default async function Home({ params }: PageProps<"/[lang]">) {
   const at = (path: string) => pathFor(lang, path);
   // Prices show only once Samuel has approved them and Stripe is connected.
   const priced = paymentsOn();
-  const leadPrice = lang === "ja" ? money(PRICING.lead.JPY, "JPY", lang) : money(PRICING.lead.USD, "USD", lang);
-  const sponsorPrice = lang === "ja" ? money(PRICING.sponsor.JPY, "JPY", lang) : money(PRICING.sponsor.USD, "USD", lang);
+  const leadPrice = money(PRICING.lead.USD, "USD", lang);
+  const sponsorPrice = money(PRICING.sponsor.USD, "USD", lang);
   // Japanese visitors see job alerts once the MHLW notification is filed (JAPAN_SEEKER_DATA).
   const alertsHere = lang !== "ja" || collectsSeekers("JP");
   const alertCountries = countryOptions(lang).filter(([code]) => collectsSeekers(code));
