@@ -7,14 +7,15 @@ import { SITE_URL, pathFor } from "@/lib/site";
 /**
  * Every live job as an XML feed in the common job-board format (publisher, job, title, date, url, company, city,
  * country, description, salary, jobtype, category). Job search engines and aggregators read it; one feed, many
- * employers. Each job links back to its page here, where technicians apply.
+ * employers. Each job links back to its page here, where technicians apply. Jobs imported from employers' own
+ * careers pages stay out: their employers publish them already.
  */
 const cdata = (value: string) => `<![CDATA[${value.replace(/]]>/g, "]]]]><![CDATA[>")}]]>`;
 const JOBTYPE: Record<string, string> = { full_time: "fulltime", part_time: "parttime", contract: "contract", temporary: "temporary" };
 
 export async function GET() {
   const t = getDictionary("en");
-  const jobs = await allLiveJobs().catch(() => []);
+  const jobs = await allLiveJobs(5000, false).catch(() => []);
   const items = jobs.map((job) => {
     const lang = job.lang === "ja" ? "ja" : "en";
     const pay = payText(job, getDictionary(lang).ui, lang);

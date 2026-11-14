@@ -1,16 +1,16 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { connection } from "next/server";
-import { getDictionary } from "@/content";
+import { fill, getDictionary } from "@/content";
 import { ApplyForm } from "@/components/Forms";
 import { JobCard } from "@/components/JobCard";
 import { LangSwitch } from "@/components/LangSwitch";
 import { Card, Shell } from "@/components/Shell";
 import { Label } from "@/components/Typo";
-import { collectsSeekers } from "@/lib/config";
+import { collectsSeekers, paymentsOn } from "@/lib/config";
 import { countryName, countryOptions } from "@/lib/countries";
-import { dateText, payText } from "@/lib/format";
-import { getJob, isLive, listJobs } from "@/lib/market";
+import { dateText, money, payText } from "@/lib/format";
+import { getJob, isLive, listJobs, sponsorPrice } from "@/lib/market";
 import { alternates } from "@/lib/seo";
 import { SITE_URL, isLocale, pathFor, type Locale } from "@/lib/site";
 
@@ -47,6 +47,9 @@ export default async function JobPage({ params }: PageProps<"/[lang]/jobs/[id]">
   const pay = payText(job, t.ui, lang);
   const external = Boolean(job.apply_url) || !collectsSeekers(job.country);
   const applyHref = job.apply_url.includes("@") && !job.apply_url.startsWith("http") ? `mailto:${job.apply_url}` : job.apply_url;
+  const featured = job.sponsored_until !== null && new Date(job.sponsored_until) > new Date();
+  const canFeature = live && !featured && paymentsOn();
+  const featurePrice = sponsorPrice({ country: job.country });
   const similar = live ? (await listJobs({ trade: job.trade, perPage: 4 })).jobs.filter((j) => j.id !== job.id).slice(0, 3) : [];
 
   const posting = live && {
@@ -119,6 +122,7 @@ export default async function JobPage({ params }: PageProps<"/[lang]/jobs/[id]">
                 </>
               )}
             </p>
+            {job.source && job.company_name && <p className="mt-2 text-[14.5px] text-mute">{fill(t.job.source, { company: job.company_name })}</p>}
             {!live && (
               <p role="status" className="mt-6 inline-block rounded-xl bg-orange/10 px-5 py-3 text-[15.5px] font-semibold text-orange-deep">
                 {t.job.closed} {t.job.closedText}
@@ -176,6 +180,19 @@ export default async function JobPage({ params }: PageProps<"/[lang]/jobs/[id]">
                 </>
               )}
             </Card>
+          )}
+          {canFeature && (
+            <form action="/api/checkout" method="post" className="mt-6 rounded-2xl bg-mist px-6 py-5 ring-1 ring-line">
+              <input type="hidden" name="kind" value="feature" />
+              <input type="hidden" name="job" value={job.id} />
+              <input type="hidden" name="lang" value={lang} />
+              <input type="hidden" name="back" value={pathFor(lang, `/jobs/${job.id}`)} />
+              <p className="text-[12.5px] font-bold uppercase tracking-[0.14em] text-orange">{t.job.employers}</p>
+              <p className="mt-2 text-[14.5px] leading-relaxed text-ink/80">{t.job.featureText}</p>
+              <button className="mt-4 rounded-md px-5 py-2.5 text-[14.5px] font-semibold text-navy ring-1 ring-navy/30 transition hover:ring-navy">
+                {fill(t.job.featureButton, { price: money(featurePrice.amount, featurePrice.currency, lang) })}
+              </button>
+            </form>
           )}
         </div>
       </section>

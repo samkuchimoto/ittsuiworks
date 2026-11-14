@@ -283,6 +283,10 @@ export const en = {
     closed: "This job is closed.",
     closedText: "It no longer takes applications.",
     similar: "More jobs in this trade",
+    source: "Listed from {company}'s careers page. You apply on {company}'s own site.",
+    employers: "For employers",
+    featureText: "Hiring for this job? Feature it: first in every job list on Ittsui Works for 30 days, marked Featured. Paid by card through Stripe.",
+    featureButton: "Feature this job for 30 days: {price}",
   },
   postJob: {
     label: "Post a job",
@@ -528,6 +532,10 @@ export const en = {
       subject: "Featured until {date}: {title}",
       lines: ["Your job \"{title}\" is featured until {date}: first in every job list and on the home page.", "Paid: {price}", "Your account: {link}"],
     },
+    featurePaid: {
+      subject: "Featured until {date}: {title}",
+      lines: ["The job \"{title}\" is featured until {date}: first in every job list on Ittsui Works.", "Paid: {price}", "The job: {link}"],
+    },
     refunded: {
       subject: "Refunded: {title}",
       lines: ["Three companies took this lead while your payment went through, so your {price} is refunded in full."],
@@ -564,6 +572,10 @@ export const en = {
         p: "The price of a lead is shown before paying. Payment is by card through Stripe. A lead gives the buyer's contact details for that project, not a contract or a commitment to hire. If three companies take a lead while your payment goes through, your payment is refunded in full. If a buyer's email address bounces, write to us within 7 days and we refund that lead.",
       },
       { h: "Featured jobs", p: "The price is shown before paying. A featured job stays first in every list for 30 days from payment." },
+      {
+        h: "Jobs from careers pages",
+        p: "Some jobs are listed from the employer's own public careers page, with a link to apply there. They leave this site when the employer closes them. An employer can ask us to remove a listing at contact@ittsuiworks.com.",
+      },
       {
         h: "No guarantee",
         p: "Ittsui Works does not guarantee any application, hire, contract or result. Companies, buyers and technicians are responsible for what they post and for their own agreements.",

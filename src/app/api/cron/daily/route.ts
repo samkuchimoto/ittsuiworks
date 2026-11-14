@@ -1,4 +1,4 @@
-import { PRICING, paymentsOn } from "@/lib/config";
+import { IMPORT, PRICING, paymentsOn } from "@/lib/config";
 import { hasDatabase } from "@/lib/db";
 import { mailConfigured, trySendMail } from "@/lib/mail";
 import { dailyMarket, marketStats } from "@/lib/market";
@@ -12,6 +12,7 @@ const flags = () => ({
   stripe: Boolean(process.env.STRIPE_SECRET_KEY),
   pricesApproved: PRICING.approved,
   payments: paymentsOn(),
+  jobImport: IMPORT.on,
   outreach: outreachConfig(),
 });
 
@@ -34,7 +35,7 @@ export async function GET(request: Request) {
     subject: `Ittsui Works daily: ${stats ? `${stats.liveJobs} live jobs, ${stats.applications} applications, ${stats.leadsSold} leads sold` : "check the run"}`,
     lines: [
       stats
-        ? `Live jobs: ${stats.liveJobs} (${stats.newJobs} new). Applications (24 h): ${stats.applications}. Job alerts on: ${stats.alerts}.`
+        ? `Live jobs: ${stats.liveJobs} (${stats.newJobs} new, ${stats.importedJobs} from careers pages). Applications (24 h): ${stats.applications}. Job alerts on: ${stats.alerts}.`
         : "Stats failed.",
       stats ? `Companies: ${stats.companies} (${stats.leadCompanies} with leads on). Projects: ${stats.openProjects} open, ${stats.waitingProjects} waiting, ${stats.newProjects} new. Leads sold (24 h): ${stats.leadsSold}.` : "",
       `Run: ${JSON.stringify(market)}`,

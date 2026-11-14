@@ -1,8 +1,9 @@
-import { leadCheckout, sponsorCheckout } from "@/lib/market";
+import { featureCheckout, leadCheckout, sponsorCheckout } from "@/lib/market";
 import { SITE_URL } from "@/lib/site";
 
 /**
- * Plain HTML form posts from the lead page ("Take this lead") and the account page ("Feature this job").
+ * Plain HTML form posts from the lead page ("Take this lead"), the account page ("Feature this job") and any live
+ * job page ("Feature this job", for its employer).
  * Prices come from lib/config.ts, never from the browser. Answers with a redirect to Stripe Checkout.
  */
 export async function POST(request: Request) {
@@ -21,7 +22,9 @@ export async function POST(request: Request) {
         ? await leadCheckout(String(form.get("token") ?? ""))
         : kind === "sponsor"
           ? await sponsorCheckout(String(form.get("account") ?? ""), String(form.get("job") ?? ""))
-          : null;
+          : kind === "feature"
+            ? await featureCheckout(String(form.get("job") ?? ""), String(form.get("lang") ?? "en"))
+            : null;
     return Response.redirect(url ?? `${SITE_URL}${safeBack}`, 303);
   } catch (error) {
     console.error("[checkout] failed:", error instanceof Error ? error.message : "unknown");

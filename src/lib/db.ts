@@ -64,6 +64,9 @@ CREATE TABLE IF NOT EXISTS jobs (
   applications integer NOT NULL DEFAULT 0
 );
 CREATE INDEX IF NOT EXISTS jobs_live ON jobs (status, published_at DESC);
+ALTER TABLE jobs ADD COLUMN IF NOT EXISTS source text;
+ALTER TABLE jobs ADD COLUMN IF NOT EXISTS source_id text;
+CREATE UNIQUE INDEX IF NOT EXISTS jobs_source ON jobs (source, source_id);
 CREATE TABLE IF NOT EXISTS applications (
   id text PRIMARY KEY,
   created_at timestamptz NOT NULL DEFAULT now(),

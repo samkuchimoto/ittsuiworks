@@ -12,8 +12,11 @@ const text = async (path, init) => (await get(path, init)).text();
 
 // 1. Every page in the sitemap: status, language, title, description, canonical, hreflang, link preview.
 const sitemap = await text("/sitemap.xml");
-const pages = [...sitemap.matchAll(/<loc>([^<]+)<\/loc>/g)].map((m) => new URL(m[1]).pathname);
-check(pages.length >= 14, `sitemap lists ${pages.length} pages`);
+const listed = [...sitemap.matchAll(/<loc>([^<]+)<\/loc>/g)].map((m) => new URL(m[1]).pathname);
+// Hundreds of job pages share one template: every other page, plus a sample of six jobs.
+const jobPages = listed.filter((p) => /\/jobs\/[a-z0-9x]+$/.test(p));
+const pages = [...listed.filter((p) => !jobPages.includes(p)), ...jobPages.slice(0, 6)];
+check(listed.length >= 14, `sitemap lists ${listed.length} pages (${jobPages.length} jobs)`);
 check((await text("/robots.txt")).includes("sitemap.xml"), "robots.txt points to the sitemap");
 
 const assets = new Set();
@@ -100,7 +103,9 @@ const cron = await (await get("/api/cron/daily")).json().catch(() => ({}));
 check(cron.database === true, `database connected (${cron.database})`);
 check(cron.email === true, `email connected (${cron.email})`);
 check(cron.market === undefined, "daily run needs the cron secret");
-console.log(`switches: payments ${cron.payments ? "on" : "off"}, outreach sending ${cron.outreach?.sending ? "on" : "off"}`);
+const importer = await (await get("/api/cron/import")).json().catch(() => ({}));
+check(importer.on === true && importer.added === undefined, `job import on, and needs the cron secret (${JSON.stringify(importer)})`);
+console.log(`switches: payments ${cron.payments ? "on" : "off"}, outreach sending ${cron.outreach?.sending ? "on" : "off"}, live jobs in sitemap ${jobPages.length}`);
 
 // Report.
 const failed = results.filter((x) => !x.pass);

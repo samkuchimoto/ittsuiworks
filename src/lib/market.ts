@@ -49,7 +49,8 @@ export type Company = {
   abroad: boolean;
   lang: string;
   token: string;
-  status: "unverified" | "active" | "left";
+  /** "imported": an employer whose jobs come from its careers page (lib/importer.ts); it gets no email, leads or applications here. */
+  status: "unverified" | "active" | "left" | "imported";
   leads: boolean;
   verified_at: Date | null;
 };
@@ -76,6 +77,8 @@ export type Job = {
   expires_at: Date | null;
   sponsored_until: Date | null;
   applications: number;
+  /** "greenhouse:xai" etc. for jobs imported from an employer's careers page (lib/importer.ts); null when posted here. */
+  source: string | null;
   company_name?: string;
   company_website?: string;
 };
@@ -151,7 +154,7 @@ export function sponsorPrice(company: Pick<Company, "country">) {
 }
 
 /** Announces new or changed pages to IndexNow (Bing, Yandex, Seznam, Naver). Production only, never blocks. */
-async function pingIndexNow(urls: string[]) {
+export async function pingIndexNow(urls: string[]) {
   if (process.env.VERCEL_ENV !== "production" || urls.length === 0) return;
   try {
     await fetch("https://api.indexnow.org/indexnow", {
@@ -165,7 +168,7 @@ async function pingIndexNow(urls: string[]) {
   }
 }
 
-const jobUrls = (job: Pick<Job, "id">) => [`${SITE_URL}/jobs/${job.id}`, `${SITE_URL}/ja/jobs/${job.id}`];
+export const jobUrls = (job: Pick<Job, "id">) => [`${SITE_URL}/jobs/${job.id}`, `${SITE_URL}/ja/jobs/${job.id}`];
 
 // ------------------------------------------------------------------ companies
 
@@ -362,10 +365,10 @@ export async function getJob(id: string): Promise<Job | null> {
 
 export const isLive = (job: Job) => job.status === "live" && job.expires_at !== null && new Date(job.expires_at) > new Date();
 
-/** Every live job, for the sitemap and the XML feed. */
-export async function allLiveJobs(limit = 5000): Promise<Job[]> {
+/** Every live job, for the sitemap; the XML feed leaves out imported jobs (their employers syndicate them already). */
+export async function allLiveJobs(limit = 5000, imported = true): Promise<Job[]> {
   if (!hasDatabase()) return [];
-  return query<Job>(`${JOB_SELECT} WHERE ${LIVE} ORDER BY j.published_at DESC LIMIT $1`, [limit]);
+  return query<Job>(`${JOB_SELECT} WHERE ${LIVE} AND ($2 OR j.source IS NULL) ORDER BY j.published_at DESC LIMIT $1`, [limit, imported]);
 }
 
 // ------------------------------------------------------------------ applications
@@ -459,7 +462,7 @@ export async function sendDigests(): Promise<number> {
   for (const alert of alerts) {
     if (sent >= ALERT_DAILY_CAP) break;
     const jobs = await query<Job>(
-      `${JOB_SELECT} WHERE ${LIVE} AND j.trade = $1 AND j.country = $2 AND j.published_at > GREATEST(COALESCE($3::timestamptz, $4::timestamptz), now() - interval '7 days')
+      `${JOB_SELECT} WHERE ${LIVE} AND j.trade = $1 AND j.country = $2 AND GREATEST(j.published_at, j.created_at) > GREATEST(COALESCE($3::timestamptz, $4::timestamptz), now() - interval '7 days')
        ORDER BY ${FEATURED_FIRST} LIMIT 10`,
       [alert.trade, alert.country, alert.last_sent_at, alert.created_at],
     );
@@ -643,27 +646,45 @@ export async function leadCheckout(token: string): Promise<string | null> {
   return session.url;
 }
 
-/** A Stripe Checkout to feature a live job for SPONSOR_DAYS. */
-export async function sponsorCheckout(accountToken: string, jobId: string): Promise<string | null> {
+const isFeatured = (job: Pick<Job, "sponsored_until">) => job.sponsored_until !== null && new Date(job.sponsored_until) > new Date();
+
+/** One Stripe Checkout to feature a job for SPONSOR_DAYS, at the price in lib/config.ts. */
+async function sponsorSession(job: Job, opts: { from: "account" | "job"; lang: string; email?: string; cancel: string }): Promise<string | null> {
   const stripe = stripeClient();
-  const company = await companyByToken(accountToken);
-  if (!stripe || !paymentsOn() || !company || company.status !== "active") return null;
-  const [job] = await query<Job>(`SELECT * FROM jobs WHERE id = $1 AND company_id = $2 AND status = 'live'`, [jobId, company.id]);
-  if (!job) return null;
-  const price = sponsorPrice(company);
-  const metadata = { site: "ittsuiworks", kind: "sponsor", job: job.id };
+  if (!stripe || !paymentsOn()) return null;
+  const price = sponsorPrice({ country: job.country });
+  const metadata = { site: "ittsuiworks", kind: "sponsor", job: job.id, from: opts.from, lang: langOf(opts.lang) };
   const session = await stripe.checkout.sessions.create({
     mode: "payment",
-    customer_email: company.email,
+    ...(opts.email ? { customer_email: opts.email } : {}),
     line_items: [{ quantity: 1, price_data: { currency: price.currency.toLowerCase(), unit_amount: toMinor(price.amount, price.currency), product_data: { name: `Featured job, ${SPONSOR_DAYS} days: ${job.title}`.slice(0, 250) } } }],
     metadata,
     payment_intent_data: { metadata, statement_descriptor_suffix: "ITTSUIWORKS" },
     success_url: checkoutReturn,
-    cancel_url: pageUrl(company.lang, `/account/${company.token}`),
-    locale: company.lang === "ja" ? "ja" : "en",
+    cancel_url: opts.cancel,
+    locale: langOf(opts.lang) === "ja" ? "ja" : "en",
   });
   await query(`INSERT INTO sponsorships (stripe_session, job_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`, [session.id, job.id]);
   return session.url;
+}
+
+/** From the company's account page. */
+export async function sponsorCheckout(accountToken: string, jobId: string): Promise<string | null> {
+  const company = await companyByToken(accountToken);
+  if (!company || company.status !== "active") return null;
+  const [job] = await query<Job>(`SELECT * FROM jobs WHERE id = $1 AND company_id = $2 AND status = 'live'`, [jobId, company.id]);
+  if (!job) return null;
+  return sponsorSession(job, { from: "account", lang: company.lang, email: company.email, cancel: pageUrl(company.lang, `/account/${company.token}`) });
+}
+
+/**
+ * From the job's own page, for the employer of any live job (posted here or imported): no account and no email step,
+ * Stripe asks for the payer's email. The payer always comes back to the job page, never to an account page.
+ */
+export async function featureCheckout(jobId: string, lang: string): Promise<string | null> {
+  const job = await getJob(jobId);
+  if (!job || !isLive(job) || isFeatured(job)) return null;
+  return sponsorSession(job, { from: "job", lang, cancel: pageUrl(lang, `/jobs/${job.id}`) });
 }
 
 /** Records a paid Checkout once (return page, webhook and daily check all call it). Returns where to send the payer. */
@@ -672,7 +693,7 @@ export async function checkoutPaid(session: Stripe.Checkout.Session): Promise<st
   const amount = session.amount_total ?? 0;
   const currency = (session.currency ?? "usd").toUpperCase();
   if (session.metadata.kind === "lead" && session.metadata.lead) return leadPaid(session.metadata.lead, session, amount, currency);
-  if (session.metadata.kind === "sponsor" && session.metadata.job) return sponsorPaid(session.id, session.metadata.job, amount, currency);
+  if (session.metadata.kind === "sponsor" && session.metadata.job) return sponsorPaid(session, session.metadata.job, amount, currency);
   return SITE_URL;
 }
 
@@ -727,13 +748,17 @@ async function leadPaid(token: string, session: Stripe.Checkout.Session, amount:
   return back;
 }
 
-async function sponsorPaid(sessionId: string, jobId: string, amount: number, currency: string): Promise<string> {
-  const [row] = await query(`UPDATE sponsorships SET paid_at = now(), amount = $2, currency = $3 WHERE stripe_session = $1 AND paid_at IS NULL RETURNING *`, [sessionId, amount, currency]);
+async function sponsorPaid(session: Stripe.Checkout.Session, jobId: string, amount: number, currency: string): Promise<string> {
+  const [row] = await query(`UPDATE sponsorships SET paid_at = now(), amount = $2, currency = $3 WHERE stripe_session = $1 AND paid_at IS NULL RETURNING *`, [session.id, amount, currency]);
   const [job] = await query<Job>(`SELECT * FROM jobs WHERE id = $1`, [jobId]);
   if (!job) return SITE_URL;
   const [company] = await query<Company>(`SELECT * FROM companies WHERE id = $1`, [job.company_id]);
   const account = pageUrl(company.lang, `/account/${company.token}`);
-  if (!row) return account;
+  // Paid from the public job page: back to the job page. The account link signs in, so only its owner gets it, by email.
+  const payerLang = langOf(session.metadata?.lang ?? "en");
+  const fromJob = session.metadata?.from === "job" || company.status === "imported";
+  const back = fromJob ? pageUrl(payerLang, `/jobs/${job.id}`) : account;
+  if (!row) return back;
   const [updated] = await query<Job>(
     `UPDATE jobs SET sponsored_until = GREATEST(COALESCE(sponsored_until, now()), now()) + make_interval(days => $2),
        expires_at = GREATEST(expires_at, GREATEST(COALESCE(sponsored_until, now()), now()) + make_interval(days => $2))
@@ -743,13 +768,34 @@ async function sponsorPaid(sessionId: string, jobId: string, amount: number, cur
   const t = dict(company.lang);
   const until = dateText(updated.sponsored_until!, langOf(company.lang));
   const paid = money(fromMinor(amount, currency), currency, langOf(company.lang));
+  // Imported employers have no inbox here (their address ends in .invalid): only the payer is told.
+  if (company.status !== "imported") {
+    await trySendMail({
+      to: company.email,
+      subject: fill(t.mail.sponsorPaid.subject, { date: until, title: job.title }),
+      lines: mailLines(t.mail.sponsorPaid.lines, { title: job.title, date: until, price: paid, link: account }),
+    });
+  }
+  const payer = (session.customer_details?.email ?? session.customer_email ?? "").toLowerCase();
+  if (payer && payer !== company.email) {
+    const tp = dict(payerLang);
+    const date = dateText(updated.sponsored_until!, payerLang);
+    await trySendMail({
+      to: payer,
+      subject: fill(tp.mail.featurePaid.subject, { date, title: job.title }),
+      lines: mailLines(tp.mail.featurePaid.lines, { title: job.title, date, price: money(fromMinor(amount, currency), currency, payerLang), link: pageUrl(payerLang, `/jobs/${job.id}`) }),
+    });
+  }
   await trySendMail({
-    to: company.email,
-    subject: fill(t.mail.sponsorPaid.subject, { date: until, title: job.title }),
-    lines: mailLines(t.mail.sponsorPaid.lines, { title: job.title, date: until, price: paid, link: account }),
+    subject: `JOB FEATURED: ${paid}, ${job.title}`,
+    lines: [
+      `Company: ${company.name}${company.status === "imported" ? " (imported job)" : `, ${company.email}`}`,
+      `Paid by: ${payer || "unknown"}`,
+      `Until: ${until}`,
+      `Job: ${pageUrl("en", `/jobs/${job.id}`)}`,
+    ],
   });
-  await trySendMail({ subject: `JOB FEATURED: ${paid}, ${job.title}`, lines: [`Company: ${company.name}, ${company.email}`, `Until: ${until}`] });
-  return account;
+  return back;
 }
 
 /** Checks a Checkout Session with Stripe (from the return link) and records it. */
@@ -830,7 +876,8 @@ export async function marketStats() {
   const one = async (sql: string) => Number((await query<{ n: string }>(sql))[0]?.n ?? 0);
   return {
     liveJobs: await one(`SELECT count(*) AS n FROM jobs WHERE status = 'live' AND expires_at > now()`),
-    newJobs: await one(`SELECT count(*) AS n FROM jobs WHERE published_at > now() - interval '1 day'`),
+    newJobs: await one(`SELECT count(*) AS n FROM jobs WHERE status = 'live' AND GREATEST(published_at, created_at) > now() - interval '1 day'`),
+    importedJobs: await one(`SELECT count(*) AS n FROM jobs WHERE status = 'live' AND expires_at > now() AND source IS NOT NULL`),
     applications: await one(`SELECT count(*) AS n FROM applications WHERE created_at > now() - interval '1 day'`),
     alerts: await one(`SELECT count(*) AS n FROM alerts WHERE status = 'active'`),
     companies: await one(`SELECT count(*) AS n FROM companies WHERE status = 'active'`),

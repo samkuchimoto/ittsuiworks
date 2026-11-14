@@ -63,6 +63,14 @@ export const paymentsOn = () => (PRICING.approved || localMock()) && Boolean(pro
 export const JAPAN_SEEKER_DATA = false;
 export const collectsSeekers = (country: string) => country !== "JP" || JAPAN_SEEKER_DATA;
 
+/**
+ * Job import, the way Indeed began (lib/feeds.ts): technician jobs from employers' public careers pages, each on its
+ * own page with a link back to apply. Runs every day (vercel.json cron /api/cron/import). A job leaves the site the
+ * day it leaves the employer's page; keepDays is the safety net if the import ever stops. Never Japan.
+ * Turning `on` to false stops new imports; jobs already listed then end within keepDays.
+ */
+export const IMPORT = { on: true, keepDays: 7, maxNewPerRun: 600 } as const;
+
 /** Job alert emails: at most this many per day in total (Resend's free plan allows 100 a day for every site). */
 export const ALERT_DAILY_CAP = 40;
 
