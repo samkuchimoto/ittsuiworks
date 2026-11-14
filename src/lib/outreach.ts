@@ -161,36 +161,44 @@ const OSM_QUERIES: Record<string, string[]> = {
   datacenter: [`nwr["telecom"="data_center"]["website"](area.a);`, `nwr["building"="data_center"]["website"](area.a);`],
 };
 
-async function fromOsm(country: string, trade: string): Promise<Found[]> {
-  const body = `[out:json][timeout:50];area["ISO3166-1"="${country}"][admin_level=2]->.a;(${OSM_QUERIES[trade].join("")});out tags 400;`;
-  try {
-    const res = await fetch("https://overpass-api.de/api/interpreter", {
-      method: "POST",
-      headers: { "User-Agent": UA, "Content-Type": "application/x-www-form-urlencoded" },
-      body: `data=${encodeURIComponent(body)}`,
-      signal: AbortSignal.timeout(55_000),
-    });
-    if (!res.ok) return [];
-    const json = (await res.json()) as { elements?: { tags?: Record<string, string> }[] };
-    return (json.elements ?? [])
-      .map((e) => e.tags ?? {})
-      .map((tags) => ({ company: tags.name ?? tags.operator ?? "", website: tags.website ?? tags["contact:website"] ?? "", country, trade, source: "osm" }))
-      .filter((f) => f.company && f.website);
-  } catch {
-    return [];
+/** Public Overpass servers. The main one is often at capacity, so a mirror is tried next. */
+const OVERPASS = ["https://overpass-api.de/api/interpreter", "https://overpass.private.coffee/api/interpreter"];
+
+/** Companies from OpenStreetMap; null when every server was busy (the same source is tried again next run). */
+async function fromOsm(country: string, trade: string): Promise<Found[] | null> {
+  const body = `[out:json][timeout:38];area["ISO3166-1"="${country}"][admin_level=2]->.a;(${OSM_QUERIES[trade].join("")});out tags 400;`;
+  for (const endpoint of OVERPASS) {
+    try {
+      const res = await fetch(endpoint, {
+        method: "POST",
+        headers: { "User-Agent": UA, "Content-Type": "application/x-www-form-urlencoded" },
+        body: `data=${encodeURIComponent(body)}`,
+        signal: AbortSignal.timeout(40_000),
+      });
+      if (!res.ok) continue;
+      const json = (await res.json()) as { elements?: { tags?: Record<string, string> }[]; remark?: string };
+      if (json.remark && !json.elements?.length) continue;
+      return (json.elements ?? [])
+        .map((e) => e.tags ?? {})
+        .map((tags) => ({ company: tags.name ?? tags.operator ?? "", website: tags.website ?? tags["contact:website"] ?? "", country, trade, source: "osm" }))
+        .filter((f) => f.company && f.website);
+    } catch {
+      // Busy or slow: try the next server.
+    }
   }
+  return null;
 }
 
-async function fromPeeringDb(country: string): Promise<Found[]> {
+async function fromPeeringDb(country: string): Promise<Found[] | null> {
   try {
-    const res = await fetch(`https://www.peeringdb.com/api/fac?country=${country}&status=ok`, { headers: { "User-Agent": UA }, signal: AbortSignal.timeout(20_000) });
-    if (!res.ok) return [];
+    const res = await fetch(`https://www.peeringdb.com/api/fac?country=${country}&status=ok`, { headers: { "User-Agent": UA }, signal: AbortSignal.timeout(15_000) });
+    if (!res.ok) return null;
     const json = (await res.json()) as { data?: { name?: string; org_name?: string; website?: string }[] };
     return (json.data ?? [])
       .map((f) => ({ company: f.org_name || f.name || "", website: f.website ?? "", country, trade: "datacenter", source: "peeringdb" }))
       .filter((f) => f.company && f.website);
   } catch {
-    return [];
+    return null;
   }
 }
 
@@ -212,24 +220,31 @@ export async function addProspects(found: (Found & { email?: string })[]): Promi
   return added;
 }
 
-/** One source a day, rotating through countries x (OSM hvac, OSM marine, OSM data centers, PeeringDB). */
-async function discover(): Promise<{ source: string; found: number; added: number }> {
+/**
+ * One source a day, rotating through countries x (OSM hvac, OSM data centers, OSM marine, PeeringDB).
+ * When OpenStreetMap is busy, the same source waits for the next run and PeeringDB fills in, so every run adds.
+ */
+async function discover(): Promise<{ source: string; found: number; added: number; busy?: boolean }> {
   const countries = outreachCountries();
   const sources = [...TRADES.map((t) => `osm:${t}`), "peeringdb"];
   const cursor = (await getState<number>("outreach:cursor")) ?? 0;
   const country = countries[Math.floor(cursor / sources.length) % countries.length];
   const source = sources[cursor % sources.length];
-  await setState("outreach:cursor", (cursor + 1) % (countries.length * sources.length));
   const found = source === "peeringdb" ? await fromPeeringDb(country) : await fromOsm(country, source.split(":")[1]);
-  return { source: `${source} ${country}`, found: found.length, added: await addProspects(found) };
+  if (found === null && source !== "peeringdb") {
+    const backup = (await fromPeeringDb(country)) ?? [];
+    return { source: `${source} ${country} busy, peeringdb ${country}`, found: backup.length, added: await addProspects(backup), busy: true };
+  }
+  await setState("outreach:cursor", (cursor + 1) % (countries.length * sources.length));
+  return { source: `${source} ${country}`, found: found?.length ?? 0, added: await addProspects(found ?? []) };
 }
 
-async function enrich(): Promise<number> {
+async function enrich(deadline: number): Promise<number> {
   const queue = await query<Prospect>(`SELECT * FROM prospects WHERE status = 'new' ORDER BY created_at LIMIT $1`, [OUTREACH.enrichPerRun]);
   let ready = 0;
-  const started = Date.now();
   for (const p of queue) {
-    if (Date.now() - started > 35_000) break;
+    // Each website takes up to ~12 s; stop in time for the function limit (maxDuration in the cron route).
+    if (Date.now() > deadline - 12_000) break;
     const { email, note } = await findEmail(p.website);
     const stopped = email ? (await query(`SELECT 1 FROM suppression WHERE email = $1`, [email])).length > 0 : false;
     await query(`UPDATE prospects SET email = $2, status = $3, note = $4 WHERE id = $1`, [p.id, email, email && !stopped ? "ready" : "skipped", stopped ? "on the stop list" : note]);
@@ -387,8 +402,9 @@ export async function outreachStats(): Promise<Record<string, number>> {
 
 /** The daily outreach run. Discovery and email finding always run; sending only when switched on. */
 export async function dailyOutreach() {
+  const deadline = Date.now() + 240_000;
   const found = await discover().catch((error) => ({ source: "error", found: 0, added: 0, error: error instanceof Error ? error.message : "unknown" }));
-  const ready = await enrich().catch(() => 0);
+  const ready = await enrich(deadline).catch(() => 0);
   const replies = await readReplies().catch((error) => {
     console.error("[outreach] imap failed:", error instanceof Error ? error.message : "unknown");
     return { replied: 0, bounced: 0 };

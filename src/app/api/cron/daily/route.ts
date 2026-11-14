@@ -4,7 +4,7 @@ import { mailConfigured, trySendMail } from "@/lib/mail";
 import { dailyMarket, marketStats } from "@/lib/market";
 import { dailyOutreach, outreachConfig, outreachStats } from "@/lib/outreach";
 
-export const maxDuration = 60;
+export const maxDuration = 300;
 
 const flags = () => ({
   database: hasDatabase(),

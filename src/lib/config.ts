@@ -80,5 +80,5 @@ export const OUTREACH = {
   /** Days between the first email and each follow-up. Follow-ups only run when replies can be read (IMAP). */
   followUpDays: [4, 11],
   /** Websites read per daily run to find a published business email. */
-  enrichPerRun: 25,
+  enrichPerRun: 60,
 } as const;
