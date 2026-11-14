@@ -74,8 +74,14 @@ export const ALERT_DAILY_CAP = 40;
 export const OUTREACH = {
   /** Countries where emailing a business address published on its own website is lawful without prior consent. */
   defaultCountries: ["US", "JP"],
-  /** Emails a day: starts low and climbs, so the mailbox earns a sending reputation. */
-  startPerDay: 5,
+  /**
+   * Emails a day, counted from the first email of each sending domain (Samuel, 14 November 2026: "10 to 15 a day
+   * for the first two weeks on every new domain"): 10 rising to 15 over warmupDays, then stepPerDay more each day
+   * up to maxPerDay.
+   */
+  warmupFrom: 10,
+  warmupTo: 15,
+  warmupDays: 14,
   stepPerDay: 2,
   maxPerDay: 40,
   /** Days between the first email and each follow-up. Follow-ups only run when replies can be read (IMAP). */
@@ -83,3 +89,10 @@ export const OUTREACH = {
   /** Websites read per daily run to find a published business email. */
   enrichPerRun: 60,
 } as const;
+
+/** The day's limit, `days` after the first email from this sending domain. */
+export function outreachQuota(days: number): number {
+  const o = OUTREACH;
+  if (days < o.warmupDays) return Math.round(o.warmupFrom + ((o.warmupTo - o.warmupFrom) * days) / (o.warmupDays - 1));
+  return Math.min(o.maxPerDay, o.warmupTo + o.stepPerDay * (days - o.warmupDays + 1));
+}

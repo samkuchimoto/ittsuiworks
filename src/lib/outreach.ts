@@ -13,7 +13,7 @@
  */
 import "server-only";
 import { fill } from "@/content";
-import { OUTREACH, TRADES, isTrade } from "./config";
+import { OUTREACH, TRADES, isTrade, outreachQuota } from "./config";
 import { countryName, isCountry } from "./countries";
 import { getState, hasDatabase, newId, query, setState } from "./db";
 import { trySendMail } from "./mail";
@@ -328,13 +328,15 @@ export function renderOutreach(p: Prospect, step: number): { subject: string; te
 async function sendBatch(): Promise<number> {
   const cfg = outreachConfig();
   if (!cfg.sending) return 0;
-  let startedAt = await getState<string>("outreach:started");
+  // The warm-up starts again for every new sending domain.
+  const domain = (process.env.OUTREACH_FROM ?? "").match(/@([^>\s]+)/)?.[1]?.toLowerCase() ?? "default";
+  let startedAt = await getState<string>(`outreach:started:${domain}`);
   if (!startedAt) {
     startedAt = new Date().toISOString();
-    await setState("outreach:started", startedAt);
+    await setState(`outreach:started:${domain}`, startedAt);
   }
   const days = Math.floor((Date.now() - new Date(startedAt).getTime()) / 86_400_000);
-  const quota = Math.min(OUTREACH.maxPerDay, OUTREACH.startPerDay + OUTREACH.stepPerDay * days);
+  const quota = outreachQuota(days);
   const [{ n }] = await query<{ n: string }>(`SELECT count(*) AS n FROM prospects WHERE last_sent_at > now() - interval '20 hours'`);
   const room = quota - Number(n);
   if (room <= 0) return 0;
