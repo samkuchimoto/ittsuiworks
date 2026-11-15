@@ -1,7 +1,7 @@
 /**
  * Job import, the way Indeed began: technician jobs that employers publish on their own careers pages are listed
  * here, each on its own page, with a link back to the employer's page to apply. The sources are public job-board
- * feeds made to be read by anyone (Greenhouse, Lever, Ashby). Only technician jobs in our three trades, with a real
+ * feeds made to be read by anyone (Greenhouse, Lever, Ashby, SmartRecruiters). Only technician jobs in our three trades, with a real
  * place, are kept. A job leaves the site the day it leaves the employer's page.
  *
  * No imports on purpose: this file runs on the server and in local tests (node --experimental-strip-types).
@@ -9,8 +9,10 @@
 
 export type FeedTrade = "hvac" | "datacenter" | "marine";
 export type Feed = {
-  ats: "greenhouse" | "lever" | "ashby";
+  ats: "greenhouse" | "lever" | "ashby" | "smartrecruiters";
   slug: string;
+  /** SmartRecruiters only: searches sent with the request, for employers with thousands of jobs beyond our trades. */
+  query?: string[];
   name: string;
   website: string;
   trade: FeedTrade;
@@ -51,6 +53,8 @@ export const FEEDS: Feed[] = [
   { ats: "greenhouse", slug: "colovore", name: "Colovore", website: "https://www.colovore.com", trade: "datacenter" },
   { ats: "ashby", slug: "sfcompute", name: "SF Compute", website: "https://sfcompute.com", trade: "datacenter", only: DC },
   { ats: "greenhouse", slug: "startcampus", name: "Start Campus", website: "https://www.startcampus.pt", trade: "datacenter" },
+  { ats: "smartrecruiters", slug: "NEXTDC", name: "NEXTDC", website: "https://www.nextdc.com", trade: "datacenter" },
+  { ats: "smartrecruiters", slug: "STTGDC", name: "ST Telemedia Global Data Centres", website: "https://www.sttelemediagdc.com", trade: "datacenter" },
   // HVAC
   { ats: "lever", slug: "sila", name: "Sila", website: "https://www.silaservices.com", trade: "hvac", only: /hvac|heating|cooling|air condition|boiler|furnace|refrigerat|heat pump|geothermal|sheet metal|duct|comfort/i },
   { ats: "greenhouse", slug: "jetsonhome", name: "Jetson", website: "https://www.jetsonhome.com", trade: "hvac" },
@@ -58,6 +62,13 @@ export const FEEDS: Feed[] = [
   { ats: "greenhouse", slug: "quilt", name: "Quilt", website: "https://www.quilt.com", trade: "hvac" },
   { ats: "ashby", slug: "dandelion", name: "Dandelion Energy", website: "https://dandelionenergy.com", trade: "hvac" },
   { ats: "lever", slug: "octoenergy", name: "Octopus Energy", website: "https://octopus.energy", trade: "hvac", only: /heat pump/i },
+  // Heating service (Kundendienst) and heat pump technicians in Germany, Austria and Switzerland, among thousands of Bosch jobs.
+  {
+    ats: "smartrecruiters", slug: "BoschGroup", name: "Bosch", website: "https://www.bosch.com", trade: "hvac",
+    query: ["heat pump", "Wärmepumpe", "Kundendiensttechniker", "Servicetechniker"],
+    only: /heat pump|wärmepump|kundendienst|öl ?\/ ?gas|heizung|kessel|biomasse|klima|kälte|hvac|refrigerat|gebäudeautomation/i,
+  },
+  { ats: "smartrecruiters", slug: "Aramark", name: "Aramark", website: "https://www.aramark.com", trade: "hvac", only: /hvac|refrigerat|multi-?skill|mechanical/i },
   // SpaceX builds rockets; only its facilities HVAC, data center and ship jobs are ours.
   {
     ats: "greenhouse", slug: "spacex", name: "SpaceX", website: "https://www.spacex.com", trade: "hvac",
@@ -73,13 +84,14 @@ export const FEEDS: Feed[] = [
   { ats: "ashby", slug: "havocai", name: "HavocAI", website: "https://www.havocai.com", trade: "marine" },
   { ats: "greenhouse", slug: "andurilindustries", name: "Anduril", website: "https://www.anduril.com", trade: "marine", only: /marine|maritime|vessel|boat|\bship|subsea|undersea|\bdive|\bmate\b|captain|deckhand|seaman/i },
   { ats: "ashby", slug: "regent", name: "REGENT", website: "https://www.regentcraft.com", trade: "marine" },
+  { ats: "smartrecruiters", slug: "Boskalis", name: "Boskalis", website: "https://boskalis.com", trade: "marine" },
 ];
 
 /** Technician work: the trades, not the office. */
 const TECH =
-  /technician|hvac tech\b|service tech\b|installer|electrician|mechanic\b|mechanics\b|plumber|pipefitter|steamfitter|fitter|welder|operator|foreman|apprentice|helper|journeyman|critical (facilit|environment)|facilit(y|ies) (engineer|technician|operator|specialist)|operations engineer|shift (engineer|technician|lead|supervisor)|commissioning|\bbms\b|\bbas\b|controls (technician|engineer|specialist)|chief engineer|stationary engineer|building engineer|data ?cent(er|re) (technician|engineer|operations|ops)|deckhand|\bmate\b|captain|able seaman|boatswain|assistant engineer|marine (engineer|technician|electrician|mechanic)|service engineer|field (service|systems)|maintenance|heat pump (engineer|technician|fitter)|refrigeration engineer/i;
+  /technician|hvac tech\b|service tech\b|installer|electrician|mechanic\b|mechanics\b|plumber|pipefitter|steamfitter|fitter|welder|operator|foreman|apprentice|helper|journeyman|critical (facilit|environment)|facilit(y|ies) (engineer|technician|operator|specialist)|operations engineer|shift (engineer|technician|lead|supervisor)|commissioning|\bbms\b|\bbas\b|controls (technician|engineer|specialist)|chief engineer|stationary engineer|building engineer|data ?cent(er|re) (technician|engineer|operations|ops)|deckhand|\bmate\b|captain|able seaman|boatswain|assistant engineer|marine (engineer|technician|electrician|mechanic)|service engineer|field (service|systems)|maintenance|heat pump (engineer|technician|fitter)|refrigeration engineer|techniker|monteur|elektroniker|mechatroniker|technicien|frigoriste|chauffagiste|technicus/i;
 const OFFICE =
-  /\bintern\b|internship|co-op|software|recruit|sales|marketing|account (executive|manager)|financ|legal|counsel|product (manager|lead)|designer|scien|analyst|machine learning|research|director|president|\bvp\b|head of|architect|sourcing|procurement|buyer|cost engineer|scheduler|manager|coordinator|people|talent|payroll|hardware engineer|performance|outcomes|business|strategy|writer|\bit\b|network|security|\bgtm\b|customer success|help ?desk|storage/i;
+  /\bintern\b|internship|co-op|werkstudent|praktik|trainee|stagiaire|alternan|vertrieb|software|recruit|sales|marketing|account (executive|manager)|financ|legal|counsel|product (manager|lead)|designer|scien|analyst|machine learning|research|director|president|\bvp\b|head of|architect|sourcing|procurement|buyer|cost engineer|scheduler|manager|coordinator|people|talent|payroll|hardware engineer|performance|outcomes|business|strategy|writer|\bit\b|network|security|\bgtm\b|customer success|help ?desk|storage/i;
 
 export const isTechJob = (feed: Feed, title: string) =>
   TECH.test(title) && !OFFICE.test(title) && (!feed.only || feed.only.test(title)) && (!feed.split || feed.split.some(([, re]) => re.test(title)));
@@ -341,6 +353,21 @@ export async function listFeed(feed: Feed): Promise<FeedListing[]> {
   } else if (feed.ats === "lever") {
     const d = (await getJson(`https://api.lever.co/v0/postings/${feed.slug}?mode=json`)) as { id: string; text: string }[];
     all = (Array.isArray(d) ? d : []).map((j) => ({ sourceId: j.id, title: j.text, raw: j }));
+  } else if (feed.ats === "smartrecruiters") {
+    // 100 a page; ten pages at most (a feed that big gets searches instead). A job found by two searches counts once.
+    const seen = new Set<string>();
+    for (const q of feed.query ?? [""]) {
+      for (let offset = 0; offset < 1000; offset += 100) {
+        const search = q ? `&q=${encodeURIComponent(q)}` : "";
+        const d = (await getJson(`https://api.smartrecruiters.com/v1/companies/${feed.slug}/postings?limit=100&offset=${offset}${search}`)) as { totalFound?: number; content?: { id: string; name: string }[] };
+        for (const j of d.content ?? []) {
+          if (seen.has(j.id)) continue;
+          seen.add(j.id);
+          all.push({ sourceId: j.id, title: j.name, raw: j });
+        }
+        if (!d.content?.length || offset + 100 >= (d.totalFound ?? 0)) break;
+      }
+    }
   } else {
     const d = (await getJson(`https://api.ashbyhq.com/posting-api/job-board/${feed.slug}?includeCompensation=true`)) as { jobs?: { id: string; title: string; isListed?: boolean }[] };
     all = (d.jobs ?? []).filter((j) => j.isListed !== false).map((j) => ({ sourceId: j.id, title: j.title, raw: j }));
@@ -350,7 +377,8 @@ export async function listFeed(feed: Feed): Promise<FeedListing[]> {
 
 /** One listing in full, ready to publish, or null when it has no real place (remote, or unknown country). */
 export async function jobFromListing(feed: Feed, listing: FeedListing): Promise<FeedJob | null> {
-  const title = tidy(listing.title).slice(0, 140);
+  // Without the employer's internal reference ("... (w/m/div.) REF293856U").
+  const title = tidy(listing.title).replace(/\s+REF\d{4,}[A-Z]?$/, "").slice(0, 140);
   if (feed.ats === "greenhouse") {
     type G = { content?: string; absolute_url?: string; location?: { name?: string }; updated_at?: string; first_published?: string; pay_input_ranges?: { min_cents: number; max_cents: number; currency_type: string }[] };
     const j = (await getJson(`https://boards-api.greenhouse.io/v1/boards/${feed.slug}/jobs/${listing.sourceId}?pay_transparency=true`)) as G;
@@ -376,6 +404,22 @@ export async function jobFromListing(feed: Feed, listing: FeedListing): Promise<
     const lists = (j.lists ?? []).map((l) => `${l.text}\n${htmlToText(l.content)}`).join("\n\n");
     const intro = j.descriptionPlain?.trim() || [j.openingPlain, j.descriptionBodyPlain].filter(Boolean).join("\n\n").trim() || htmlToText(j.description ?? "");
     return finish({ sourceId: listing.sourceId, title, employment: employmentOf(j.categories?.commitment, title), city, country, ...pay, description: clip(tidy([intro, lists, j.additionalPlain].filter(Boolean).join("\n\n"))), applyUrl: j.hostedUrl, postedAt: validDate(j.createdAt) });
+  }
+  if (feed.ats === "smartrecruiters") {
+    type S = { location?: { city?: string; country?: string; remote?: boolean }; postingUrl?: string; releasedDate?: string; typeOfEmployment?: { label?: string }; jobAd?: { sections?: Record<string, { title?: string; text?: string } | undefined> } };
+    const j = (await getJson(`https://api.smartrecruiters.com/v1/companies/${feed.slug}/postings/${listing.sourceId}`)) as S;
+    if (!j.location || j.location.remote || !j.postingUrl) return null;
+    // The country comes as a lower-case ISO code ("au").
+    const country = j.location.country ? isoCode(j.location.country.toUpperCase()) : null;
+    const city = cityName(j.location.city);
+    if (!country || !city) return null;
+    const sections = j.jobAd?.sections ?? {};
+    const description = ["jobDescription", "qualifications", "additionalInformation"]
+      .map((k) => sections[k])
+      .filter((s) => s?.text)
+      .map((s) => `${s!.title ?? ""}\n${htmlToText(s!.text!)}`.trim())
+      .join("\n\n");
+    return finish({ sourceId: listing.sourceId, title, employment: employmentOf(j.typeOfEmployment?.label, title), city, country, ...noPay(), description: clip(tidy(description)), applyUrl: j.postingUrl, postedAt: validDate(j.releasedDate) });
   }
   type A = { location?: string; isRemote?: boolean; workplaceType?: string; address?: { postalAddress?: { addressLocality?: string; addressRegion?: string; addressCountry?: string } }; descriptionPlain?: string; descriptionHtml?: string; jobUrl?: string; publishedAt?: string; employmentType?: string; compensation?: { summaryComponents?: { compensationType?: string; interval?: string; currencyCode?: string; minValue?: number; maxValue?: number }[] } };
   const j = listing.raw as A;
