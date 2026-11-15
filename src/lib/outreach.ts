@@ -348,13 +348,21 @@ async function sendBatch(): Promise<number> {
        AND NOT EXISTS (SELECT 1 FROM suppression s WHERE s.email = p.email)
        AND NOT EXISTS (SELECT 1 FROM companies c WHERE c.email = p.email)
      ORDER BY p.status = 'sent' DESC, p.created_at LIMIT $3`,
-    [cfg.countries, steps, room],
+    [cfg.countries, steps, room * 3],
   );
   if (due.length === 0) return 0;
   const nodemailer = await import("nodemailer");
   const transport = nodemailer.createTransport(process.env.OUTREACH_SMTP_URL!);
   let sent = 0;
   for (const p of due) {
+    if (sent >= room) break;
+    // Not a trade company's business address (schools, government), or malformed ("info@www.example.com"): a bounce or
+    // a wrong recipient hurts the sending domain's reputation, so it is skipped for good.
+    const host = (p.email!.split("@")[1] ?? "").toLowerCase();
+    if (host.startsWith("www.") || /\.(edu|gov|mil)$/.test(host) || /\.(ac|go|lg)\.jp$/.test(host)) {
+      await query(`UPDATE prospects SET status = 'skipped', note = 'not a business address' WHERE id = $1`, [p.id]);
+      continue;
+    }
     const { subject, text } = renderOutreach(p, p.step);
     const unsubscribe = `${SITE_URL}/api/unsubscribe?k=prospect&t=${p.id}`;
     try {
