@@ -18,7 +18,7 @@ import { countryName, isCountry } from "./countries";
 import { getState, hasDatabase, newId, query, setState } from "./db";
 import { trySendMail } from "./mail";
 import { OUTREACH_TEXTS } from "./outreach-texts";
-import { SITE_URL, pathFor } from "./site";
+import { EMAIL, SITE_URL, pathFor } from "./site";
 
 const UA = "IttsuiWorksBot/1.0 (+https://ittsuiworks.com)";
 
@@ -328,6 +328,9 @@ export function renderOutreach(p: Prospect, step: number): { subject: string; te
 async function sendBatch(): Promise<number> {
   const cfg = outreachConfig();
   if (!cfg.sending) return 0;
+  // Business days only: the run is at 22:00 UTC, so Saturday and Sunday runs (US weekend) send nothing.
+  const day = new Date().getUTCDay();
+  if (day === 0 || day === 6) return 0;
   // The warm-up starts again for every new sending domain.
   const domain = (process.env.OUTREACH_FROM ?? "").match(/@([^>\s]+)/)?.[1]?.toLowerCase() ?? "default";
   let startedAt = await getState<string>(`outreach:started:${domain}`);
@@ -361,6 +364,8 @@ async function sendBatch(): Promise<number> {
       await transport.sendMail({
         from: process.env.OUTREACH_FROM,
         to: p.email!,
+        // A reply reaches the outreach mailbox (read over IMAP, so follow-ups stop) and the inbox Samuel reads.
+        replyTo: [process.env.OUTREACH_FROM!, EMAIL],
         subject,
         text,
         headers: { "List-Unsubscribe": `<${unsubscribe}>`, "List-Unsubscribe-Post": "List-Unsubscribe=One-Click" },
