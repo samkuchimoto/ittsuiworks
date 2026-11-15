@@ -1,19 +1,24 @@
 /**
  * The outreach emails, word for word. Nothing is sent until Samuel approves these texts and sets OUTREACH_LIVE=on.
  * Short on purpose. No "Re:" subjects, no promises, no figures. Every email names the sender, gives a postal address
- * (CAN-SPAM, 特定電子メール法), says where the address was found, and carries a one-click stop.
+ * (CAN-SPAM, 特定電子メール法) and a way to stop: in English "reply STOP" (Samuel's text, 15 November 2026; a reply
+ * marks the company replied, so nothing more is sent), plus the one-click List-Unsubscribe header on every email.
  * Values: {company} {trade} {country} {postJob} {companies} {domain} {email} {address} {unsubscribe}
  */
 export const OUTREACH_TEXTS = {
   en: {
     steps: [
       {
-        subject: "{trade} jobs and project leads, free to start",
+        // Samuel, 15 November 2026: "Use this version." Word for word.
+        subject: "HVAC, electrician and project leads, free to start",
         lines: [
           "Hello {company} team,",
-          "Ittsui Works posts your technician jobs free and sends you HVAC, data center and marine project requests. You pay only for the leads you take.",
-          "Post a job: {postJob}",
-          "Project leads: {companies}",
+          "",
+          "Ittsui Works sends you HVAC, electrician, data center and marine clients who already have budget and a start date. You only pay for the leads you take.",
+          "",
+          "Free to start: https://ittsuiworks.com",
+          "",
+          "Ittsui Works Team",
         ],
       },
       {
@@ -27,8 +32,9 @@ export const OUTREACH_TEXTS = {
     ],
     footer: [
       "",
-      "Ittsui Works, operated by Kuchimoto LLC. {address}",
-      "We found {email} on {domain}. To stop these emails: {unsubscribe}",
+      "--",
+      "Ittsui Works is operated by Kuchimoto LLC, 30 N Gould St, Ste R, Sheridan, WY 82801, USA.",
+      "To unsubscribe, reply STOP.",
     ],
     tradeNames: { hvac: "HVAC", datacenter: "Data center", marine: "Marine" },
   },
