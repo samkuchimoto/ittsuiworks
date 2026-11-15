@@ -151,6 +151,7 @@ CREATE TABLE IF NOT EXISTS prospects (
   note text NOT NULL DEFAULT ''
 );
 CREATE INDEX IF NOT EXISTS prospects_due ON prospects (status, next_at);
+ALTER TABLE prospects ADD COLUMN IF NOT EXISTS lead_offered_at timestamptz;
 CREATE TABLE IF NOT EXISTS suppression (
   email text PRIMARY KEY,
   created_at timestamptz NOT NULL DEFAULT now(),

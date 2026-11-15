@@ -49,8 +49,12 @@ export type Company = {
   abroad: boolean;
   lang: string;
   token: string;
-  /** "imported": an employer whose jobs come from its careers page (lib/importer.ts); it gets no email, leads or applications here. */
-  status: "unverified" | "active" | "left" | "imported";
+  /**
+   * "imported": an employer whose jobs come from its careers page (lib/importer.ts); it gets no email, leads or applications here.
+   * "invited": a company from the outreach list that was emailed one open project (inviteToLead); opening that lead link
+   * confirms its address and makes it active, with lead emails still off until it switches them on itself.
+   */
+  status: "unverified" | "active" | "left" | "imported" | "invited";
   leads: boolean;
   verified_at: Date | null;
 };
@@ -214,7 +218,7 @@ export async function openAccount(token: string): Promise<{ company: Company; co
   let company = await companyByToken(token);
   if (!company || company.status === "left") return company ? { company, confirmed: false, published: [] } : null;
   let confirmed = false;
-  if (company.status === "unverified") {
+  if (company.status === "unverified" || company.status === "invited") {
     [company] = await query<Company>(`UPDATE companies SET status = 'active', verified_at = now() WHERE id = $1 RETURNING *`, [company.id]);
     confirmed = true;
   }
@@ -620,6 +624,59 @@ export async function leadView(token: string): Promise<{ lead: Lead; project: Pr
   return { lead, project, company };
 }
 
+/**
+ * The lead page. The link went to the company's own address, so opening it confirms that address: an invited
+ * company (or one that never clicked its sign-up link) becomes active and can take the lead.
+ */
+export async function openLead(token: string): Promise<{ lead: Lead; project: Project; company: Company } | null> {
+  const view = await leadView(token);
+  if (!view || (view.company.status !== "invited" && view.company.status !== "unverified")) return view;
+  const [company] = await query<Company>(`UPDATE companies SET status = 'active', verified_at = now() WHERE id = $1 AND status IN ('invited', 'unverified') RETURNING *`, [view.company.id]);
+  if (company && view.company.status === "invited") await trySendMail({ subject: `LEAD OPENED (outreach): ${company.name}`, lines: [`${company.name} <${company.email}> opened the lead "${view.project.title}".`] });
+  return { ...view, company: company ?? view.company };
+}
+
+export type LeadInvite = { company: string; email: string; website: string; country: string; trade: string; lang: string };
+
+/**
+ * Lead in hand (config.ts OUTREACH.leadInHand): one open project for one company from the outreach list. Makes the
+ * company an "invited" account (lead emails off) and its lead row, and returns what the outreach email shows.
+ * Null when the company left, already has this lead, or the project can no longer be sold.
+ */
+export async function inviteToLead(p: Project, invite: LeadInvite): Promise<{ token: string; values: Record<string, string> } | null> {
+  if (!paymentsOn() || p.status !== "open" || p.sold >= LEAD_SLOTS) return null;
+  const lang = langOf(invite.lang);
+  const [company] = await query<Company>(
+    `INSERT INTO companies (id, name, email, website, country, trades, lang, token, status)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'invited')
+     ON CONFLICT (email) DO UPDATE SET email = companies.email RETURNING *`,
+    [newId(), invite.company.slice(0, 160), invite.email.toLowerCase(), invite.website, invite.country, [invite.trade], lang, newToken()],
+  );
+  if (!company || company.status === "left" || company.status === "imported" || company.leads) return null;
+  const token = newToken();
+  const rows = await query(`INSERT INTO leads (token, project_id, company_id) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING RETURNING token`, [token, p.id, company.id]);
+  if (!rows.length) return null;
+  await query(`UPDATE companies SET last_offer_at = now() WHERE id = $1`, [company.id]);
+  const t = dict(lang);
+  const price = leadPrice(company);
+  return {
+    token,
+    values: {
+      title: p.title,
+      place: place(p.city, p.country, lang),
+      budget: t.ui.budgets[p.budget as keyof Dict["ui"]["budgets"]] ?? p.budget,
+      start: t.ui.starts[p.start as keyof Dict["ui"]["starts"]] ?? p.start,
+      price: money(price.amount, price.currency, lang),
+      link: pageUrl(lang, `/lead/${token}`),
+    },
+  };
+}
+
+/** Undoes inviteToLead when its email could not be sent, so the lead can be offered again later. */
+export async function withdrawInvite(token: string): Promise<void> {
+  await query(`DELETE FROM leads WHERE token = $1 AND paid_at IS NULL AND stripe_session IS NULL`, [token]);
+}
+
 const checkoutReturn = `${SITE_URL}/api/checkout/return?session_id={CHECKOUT_SESSION_ID}`;
 
 /** A Stripe Checkout for one lead, at the price for the company's country (never a price from the browser). */
@@ -838,13 +895,18 @@ export async function dailyMarket() {
   await query(`DELETE FROM alerts WHERE status = 'unverified' AND created_at < now() - interval '7 days'`);
   await query(`DELETE FROM jobs WHERE status = 'pending' AND created_at < now() - interval '14 days'`);
   await query(`DELETE FROM projects WHERE status = 'unverified' AND created_at < now() - interval '14 days'`);
-  await query(`DELETE FROM companies c WHERE c.status = 'unverified' AND c.created_at < now() - interval '14 days' AND NOT EXISTS (SELECT 1 FROM jobs j WHERE j.company_id = c.id)`);
+  await query(
+    `DELETE FROM companies c WHERE c.status = 'unverified' AND c.created_at < now() - interval '14 days'
+       AND NOT EXISTS (SELECT 1 FROM jobs j WHERE j.company_id = c.id) AND NOT EXISTS (SELECT 1 FROM leads l WHERE l.company_id = c.id)`,
+  );
   // Kept 12 months after the end, as the privacy policy says.
   await query(`DELETE FROM applications WHERE job_id IN (SELECT id FROM jobs WHERE status IN ('closed', 'expired') AND COALESCE(expires_at, created_at) < now() - interval '12 months')`);
   await query(`DELETE FROM sponsorships WHERE job_id IN (SELECT id FROM jobs WHERE status IN ('closed', 'expired') AND COALESCE(expires_at, created_at) < now() - interval '12 months')`);
   await query(`DELETE FROM jobs WHERE status IN ('closed', 'expired') AND COALESCE(expires_at, created_at) < now() - interval '12 months'`);
   await query(`DELETE FROM leads WHERE project_id IN (SELECT id FROM projects WHERE status = 'closed' AND created_at < now() - interval '13 months')`);
   await query(`DELETE FROM projects WHERE status = 'closed' AND created_at < now() - interval '13 months'`);
+  // An invited company exists only for the leads it was offered.
+  await query(`DELETE FROM companies c WHERE c.status = 'invited' AND NOT EXISTS (SELECT 1 FROM leads l WHERE l.company_id = c.id) AND NOT EXISTS (SELECT 1 FROM jobs j WHERE j.company_id = c.id)`);
 
   const digests = await sendDigests();
 
@@ -865,7 +927,7 @@ export async function dailyMarket() {
   const recovered = await recoverCheckouts();
   const fresh = unmatched.filter((p) => !(p as Project & { alerted_at?: Date | null }).alerted_at);
   for (const p of fresh) {
-    await trySendMail({ subject: `NO COMPANY YET: ${p.title}, ${countryName(p.country)}`, lines: [...projectLines(p), "", "No signed-up company does this trade in this country yet. Outreach can target it."] });
+    await trySendMail({ subject: `NO COMPANY YET: ${p.title}, ${countryName(p.country)}`, lines: [...projectLines(p), "", process.env.OUTREACH_LEAD_OFFERS === "on" ? "No signed-up company does this trade in this country yet. The outreach part of this run offers it to companies on the outreach list (lead in hand), inside the daily limit, business days only." : "No signed-up company does this trade in this country yet. Outreach can target it."] });
     await query(`UPDATE projects SET alerted_at = now() WHERE id = $1`, [p.id]);
   }
   return { expired: expired.length, digests, offered, recovered, unmatched: unmatched.length };

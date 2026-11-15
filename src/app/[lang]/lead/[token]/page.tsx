@@ -7,7 +7,7 @@ import { Label } from "@/components/Typo";
 import { LEAD_SLOTS, paymentsOn } from "@/lib/config";
 import { countryName } from "@/lib/countries";
 import { money } from "@/lib/format";
-import { leadPrice, leadView } from "@/lib/market";
+import { leadPrice, openLead } from "@/lib/market";
 import { privatePage } from "@/lib/seo";
 import { isLocale, pathFor } from "@/lib/site";
 
@@ -18,7 +18,8 @@ export default async function LeadPage({ params, searchParams }: PageProps<"/[la
   const { lang, token } = await params;
   if (!isLocale(lang)) notFound();
   await connection();
-  const view = await leadView(token);
+  // The link went to the company's own address, so opening it confirms that address.
+  const view = await openLead(token);
   if (!view) notFound();
   const { lead, project, company } = view;
   const t = getDictionary(lang);
@@ -103,6 +104,13 @@ export default async function LeadPage({ params, searchParams }: PageProps<"/[la
                 {fill(l.buy, { price: money(price.amount, price.currency, lang) })}
               </button>
               <p className="mt-4 text-[14.5px] leading-relaxed text-mute">{l.buyText}</p>
+              <p className="mt-2 text-[14.5px] leading-relaxed text-mute">
+                {l.paying.split("{terms}")[0]}
+                <a href={pathFor(lang, "/terms")} className="font-semibold text-navy underline underline-offset-4">
+                  {l.termsWord}
+                </a>
+                {l.paying.split("{terms}")[1]}
+              </p>
             </form>
           ) : (
             <Notice>{l.closed}</Notice>

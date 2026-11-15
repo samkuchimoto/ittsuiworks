@@ -68,3 +68,90 @@ export const OUTREACH_TEXTS = {
     tradeNames: { hvac: "空調", datacenter: "データセンター", marine: "船舶" },
   },
 } as const;
+
+/**
+ * Lead in hand: one real open project, offered to a company on the outreach list (config.ts OUTREACH.leadInHand).
+ * Drafted 15 November 2026. NOT SENT until Samuel approves these words and OUTREACH_LEAD_OFFERS=on is set in Vercel.
+ * Same footer as above. Values: {company} {trade} {title} {place} {budget} {start} {price} {link}
+ */
+export const LEAD_IN_HAND_TEXTS = {
+  en: {
+    subject: "{trade} project in {place}",
+    lines: [
+      "Hello {company} team,",
+      "",
+      "A client posted this project on Ittsui Works:",
+      "",
+      "{title}",
+      "Place: {place}",
+      "Size: {budget}",
+      "Start: {start}",
+      "",
+      "Take it for {price} and get the client's contact details at once. Three companies at most:",
+      "{link}",
+      "",
+      "Ittsui Works Team",
+    ],
+  },
+  ja: {
+    subject: "{place}の{trade}案件のご案内",
+    lines: [
+      "{company} ご担当者様",
+      "一対ワークスに、次の案件が掲載されました。",
+      "{title}",
+      "場所：{place}",
+      "規模：{budget}",
+      "開始：{start}",
+      "{price}でお受けいただくと、依頼者の連絡先がすぐに届きます。お受けいただけるのは3社までです。",
+      "{link}",
+    ],
+  },
+} as const;
+
+/**
+ * Facility operators (data centers found on PeeringDB and OpenStreetMap) buy cooling and power work, so they get the
+ * buyer side: post a project, free. Step 2 is the approved hiring email above, word for word.
+ * Drafted 15 November 2026. NOT SENT until Samuel approves these words and OUTREACH_OPERATORS=on is set in Vercel;
+ * until then operators get no email at all (never the contractor email).
+ * Same footer as above. Values: as above, plus {postProject}
+ */
+export const OPERATOR_TEXTS = {
+  en: {
+    steps: [
+      {
+        subject: "HVAC and electrical contractors for {company}, free",
+        lines: [
+          "Hello {company} team,",
+          "",
+          "Post your cooling, power or fit-out work on Ittsui Works. HVAC and electrical companies in {country} get it, and up to three of them can take it and contact you. Free for you.",
+          "",
+          "Post a project: {postProject}",
+          "",
+          "Ittsui Works Team",
+        ],
+      },
+      OUTREACH_TEXTS.en.steps[1],
+      {
+        subject: "Cooling and power work at {company}?",
+        lines: ["Hello,", "One short form, free for you: HVAC and electrical companies in {country} see your project, and three at most take it:", "{postProject}"],
+      },
+    ],
+  },
+  ja: {
+    steps: [
+      {
+        subject: "空調・電気工事の専門会社をお探しの際に（無料）｜一対ワークス",
+        lines: [
+          "{company} ご担当者様",
+          "一対ワークスに冷却・電源・内装工事の案件を掲載いただくと、{country}の空調・電気工事会社に届き、最大3社が案件をお受けして直接ご連絡します。ご利用は無料です。",
+          "案件を掲載する：{postProject}",
+        ],
+      },
+      OUTREACH_TEXTS.ja.steps[1],
+      {
+        subject: "{company} 様：冷却・電源工事のご相談",
+        lines: ["{company} ご担当者様", "短いフォームひとつで、{country}の空調・電気工事会社に案件が届きます。お受けするのは最大3社、ご利用は無料です。", "{postProject}"],
+      },
+    ],
+  },
+} as const;

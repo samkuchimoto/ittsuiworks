@@ -13,11 +13,12 @@
  */
 import "server-only";
 import { fill } from "@/content";
-import { OUTREACH, TRADES, isTrade, outreachQuota } from "./config";
+import { LEAD_SLOTS, OUTREACH, TRADES, isTrade, outreachQuota } from "./config";
 import { countryName, isCountry } from "./countries";
 import { getState, hasDatabase, newId, query, releaseLock, setState, takeLock } from "./db";
 import { trySendMail } from "./mail";
-import { OUTREACH_TEXTS } from "./outreach-texts";
+import { inviteToLead, withdrawInvite, type Project } from "./market";
+import { LEAD_IN_HAND_TEXTS, OPERATOR_TEXTS, OUTREACH_TEXTS } from "./outreach-texts";
 import { EMAIL, SITE_URL, pathFor } from "./site";
 
 const UA = "IttsuiWorksBot/1.0 (+https://ittsuiworks.com)";
@@ -37,7 +38,15 @@ export type Prospect = {
   next_at: Date | null;
   last_sent_at: Date | null;
   note: string;
+  lead_offered_at?: Date | null;
 };
+
+/**
+ * Facility operators: data centers listed on PeeringDB or OpenStreetMap. They buy cooling and power work, so they
+ * get the buyer emails (OPERATOR_TEXTS), never the contractor ones, and are never offered a lead.
+ */
+const OPERATOR_SQL = `(p.source = 'peeringdb' OR (p.source = 'osm' AND p.trade = 'datacenter'))`;
+export const isOperator = (p: Pick<Prospect, "source" | "trade">) => p.source === "peeringdb" || (p.source === "osm" && p.trade === "datacenter");
 
 export function outreachCountries(): string[] {
   const list = (process.env.OUTREACH_COUNTRIES ?? "").split(",").map((c) => c.trim().toUpperCase()).filter(isCountry);
@@ -49,7 +58,10 @@ export function outreachConfig() {
   const smtp = Boolean(process.env.OUTREACH_SMTP_URL && process.env.OUTREACH_FROM);
   const address = Boolean(process.env.OUTREACH_POSTAL_ADDRESS);
   const imap = Boolean(process.env.OUTREACH_IMAP_URL);
-  return { live, smtp, address, imap, sending: live && smtp && address, countries: outreachCountries() };
+  // Each new kind of email waits for Samuel's approval of its words (outreach-texts.ts), then one Vercel switch.
+  const leadOffers = process.env.OUTREACH_LEAD_OFFERS === "on";
+  const operators = process.env.OUTREACH_OPERATORS === "on";
+  return { live, smtp, address, imap, sending: live && smtp && address, leadOffers, operators, countries: outreachCountries() };
 }
 
 // ------------------------------------------------------------------ domains and emails
@@ -307,44 +319,145 @@ async function readReplies(): Promise<{ replied: number; bounced: number }> {
 
 // ------------------------------------------------------------------ sending
 
-export function renderOutreach(p: Prospect, step: number): { subject: string; text: string } {
+function outreachValues(p: Prospect) {
   const texts = p.lang === "ja" ? OUTREACH_TEXTS.ja : OUTREACH_TEXTS.en;
-  const lang = p.lang === "ja" ? "ja" : "en";
-  const values = {
-    company: p.company,
-    trade: texts.tradeNames[p.trade as keyof typeof texts.tradeNames] ?? p.trade,
-    country: countryName(p.country, lang),
-    postJob: `${SITE_URL}${pathFor(lang, "/post-job")}`,
-    companies: `${SITE_URL}${pathFor(lang, "/companies")}`,
-    domain: p.domain,
-    email: p.email ?? "",
-    address: process.env.OUTREACH_POSTAL_ADDRESS ?? "",
-    unsubscribe: `${SITE_URL}/api/unsubscribe?k=prospect&t=${p.id}`,
+  const lang: "en" | "ja" = p.lang === "ja" ? "ja" : "en";
+  return {
+    texts,
+    lang,
+    values: {
+      company: p.company,
+      trade: texts.tradeNames[p.trade as keyof typeof texts.tradeNames] ?? p.trade,
+      country: countryName(p.country, lang),
+      postJob: `${SITE_URL}${pathFor(lang, "/post-job")}`,
+      postProject: `${SITE_URL}${pathFor(lang, "/post-project")}`,
+      companies: `${SITE_URL}${pathFor(lang, "/companies")}`,
+      domain: p.domain,
+      email: p.email ?? "",
+      address: process.env.OUTREACH_POSTAL_ADDRESS ?? "",
+      unsubscribe: `${SITE_URL}/api/unsubscribe?k=prospect&t=${p.id}`,
+    } as Record<string, string>,
   };
-  const s = texts.steps[step];
+}
+
+export function renderOutreach(p: Prospect, step: number): { subject: string; text: string } {
+  const { texts, lang, values } = outreachValues(p);
+  const s = (isOperator(p) ? OPERATOR_TEXTS[lang].steps : texts.steps)[step];
   return { subject: fill(s.subject, values), text: [...s.lines, ...texts.footer].map((l) => fill(l, values)).join("\n") };
 }
 
-async function sendBatch(): Promise<number> {
-  if (!outreachConfig().sending) return 0;
+/** The lead in hand email: one open project, values from inviteToLead. */
+export function renderLeadOffer(p: Prospect, lead: Record<string, string>): { subject: string; text: string } {
+  const { texts, lang, values } = outreachValues(p);
+  const all = { ...values, ...lead };
+  const s = LEAD_IN_HAND_TEXTS[lang];
+  return { subject: fill(s.subject, all), text: [...s.lines, ...texts.footer].map((l) => fill(l, all)).join("\n") };
+}
+
+/** Not a trade company's business address (schools, government), or malformed ("info@www.example.com"). */
+const notBusiness = (email: string) => {
+  const host = (email.split("@")[1] ?? "").toLowerCase();
+  return host.startsWith("www.") || /\.(edu|gov|mil)$/.test(host) || /\.(ac|go|lg)\.jp$/.test(host);
+};
+
+type Transport = { sendMail: (mail: Record<string, unknown>) => Promise<unknown> };
+
+async function sendOne(transport: Transport, p: Prospect, mail: { subject: string; text: string }): Promise<void> {
+  const unsubscribe = `${SITE_URL}/api/unsubscribe?k=prospect&t=${p.id}`;
+  await transport.sendMail({
+    from: process.env.OUTREACH_FROM,
+    to: p.email!,
+    // A reply reaches the outreach mailbox (read over IMAP, so follow-ups stop) and the inbox Samuel reads.
+    replyTo: [process.env.OUTREACH_FROM!, EMAIL],
+    subject: mail.subject,
+    text: mail.text,
+    headers: { "List-Unsubscribe": `<${unsubscribe}>`, "List-Unsubscribe-Post": "List-Unsubscribe=One-Click" },
+  });
+}
+
+/**
+ * Lead in hand, first in each run: open projects that fewer than LEAD_SLOTS companies took go to contractors of the
+ * same trade and country on the outreach list (never operators, never a company that stopped, left or already gets
+ * lead emails), inside the day's room. Only rows still in the email sequence ('ready' or 'sent'): never 'done' rows,
+ * which include the companies emailed by hand from Gmail in November 2026 (never emailed again). Returns how many were sent.
+ */
+async function sendLeadOffers(transport: Transport, room: number, steps: number): Promise<number> {
+  const { perProject, maxPerProject, spacingDays } = OUTREACH.leadInHand;
+  const open = await query<Project & { offered: string }>(
+    `SELECT pr.*, (SELECT count(*) FROM leads l WHERE l.project_id = pr.id) AS offered FROM projects pr
+     WHERE pr.status = 'open' AND pr.sold < $1 AND pr.country = ANY($2) ORDER BY pr.verified_at`,
+    [LEAD_SLOTS, outreachCountries()],
+  );
+  let sent = 0;
+  for (const project of open) {
+    const n = Math.min(perProject, maxPerProject - Number(project.offered), room - sent);
+    if (n <= 0) continue;
+    const candidates = await query<Prospect>(
+      `SELECT p.* FROM prospects p
+       WHERE p.email IS NOT NULL AND p.trade = $1 AND p.country = $2 AND p.status IN ('ready', 'sent') AND NOT ${OPERATOR_SQL}
+         AND (p.lead_offered_at IS NULL OR p.lead_offered_at < now() - make_interval(days => $3))
+         AND NOT EXISTS (SELECT 1 FROM suppression s WHERE s.email = p.email)
+         AND NOT EXISTS (SELECT 1 FROM companies c WHERE c.email = p.email AND (c.leads OR c.status IN ('left', 'imported')))
+         AND NOT EXISTS (SELECT 1 FROM leads l JOIN companies c ON c.id = l.company_id WHERE l.project_id = $4 AND c.email = p.email)
+       ORDER BY p.created_at LIMIT $5`,
+      [project.trade, project.country, spacingDays, project.id, n * 3],
+    );
+    let used = 0;
+    for (const p of candidates) {
+      if (used >= n) break;
+      if (notBusiness(p.email!)) {
+        await query(`UPDATE prospects SET status = 'skipped', note = 'not a business address' WHERE id = $1`, [p.id]);
+        continue;
+      }
+      const invite = await inviteToLead(project, { company: p.company, email: p.email!, website: p.website, country: p.country, trade: p.trade, lang: p.lang });
+      if (!invite) continue;
+      try {
+        await sendOne(transport, p, renderLeadOffer(p, invite.values));
+      } catch (error) {
+        console.error("[outreach] lead offer failed:", error instanceof Error ? error.message : "unknown");
+        await withdrawInvite(invite.token);
+        continue;
+      }
+      // A first email to this company starts its follow-ups; a company already in its follow-ups gets the next one
+      // three days later at the soonest, so two emails never land the same week.
+      const first = p.status === "ready";
+      const nextAt = first ? (steps > 1 ? new Date(Date.now() + OUTREACH.followUpDays[0] * 86_400_000) : null) : p.status === "sent" ? new Date(Math.max(new Date(p.next_at ?? 0).getTime(), Date.now() + 3 * 86_400_000)) : p.next_at;
+      await query(`UPDATE prospects SET lead_offered_at = now(), last_sent_at = now(), step = $2, status = $3, next_at = $4 WHERE id = $1`, [
+        p.id,
+        first ? 1 : p.step,
+        first ? (steps > 1 ? "sent" : "done") : p.status,
+        nextAt,
+      ]);
+      used++;
+      sent++;
+    }
+  }
+  return sent;
+}
+
+type Batch = { sent: number; leadOffers: number };
+const NOTHING: Batch = { sent: 0, leadOffers: 0 };
+
+async function sendBatch(): Promise<Batch> {
+  if (!outreachConfig().sending) return NOTHING;
   const domain = (process.env.OUTREACH_FROM ?? "").match(/@([^>\s]+)/)?.[1]?.toLowerCase() ?? "default";
   // One batch at a time: two runs at once (a click on Run while a run is going) would both pick the same companies
   // and email them twice. The lock outlasts the longest run (maxDuration 300 s), so a run cut off still frees it.
   const lock = `outreach:sending:${domain}`;
   if (!(await takeLock(lock, 6 * 60_000))) {
     console.log("[outreach] another run is sending: nothing sent by this one");
-    return 0;
+    return NOTHING;
   }
   try {
-    const sent = await sendLocked(domain);
-    console.log(`[outreach] sent ${sent} from ${domain}`);
-    return sent;
+    const batch = await sendLocked(domain);
+    console.log(`[outreach] sent ${batch.sent} from ${domain} (${batch.leadOffers} lead offers)`);
+    return batch;
   } finally {
     await releaseLock(lock).catch(() => undefined);
   }
 }
 
-async function sendLocked(domain: string): Promise<number> {
+async function sendLocked(domain: string): Promise<Batch> {
   const cfg = outreachConfig();
   // One-off "send now" (Samuel, 15 Nov 2026: "If the daily limit blocks it, override or reset it and send anyway."):
   // the state key outreach:send-now:<domain> holds the time it was set. For 2 hours after that time the weekend skip
@@ -356,7 +469,7 @@ async function sendLocked(domain: string): Promise<number> {
   // Business days only (Samuel, 15 Nov 2026: "Keep Monday"): the run is at 22:00 UTC, so Saturday and Sunday runs
   // (US weekend) send nothing.
   const day = new Date().getUTCDay();
-  if (!forced && (day === 0 || day === 6)) return 0;
+  if (!forced && (day === 0 || day === 6)) return NOTHING;
   // The warm-up starts again for every new sending domain.
   let startedAt = await getState<string>(`outreach:started:${domain}`);
   if (!startedAt) {
@@ -368,58 +481,54 @@ async function sendLocked(domain: string): Promise<number> {
   const countFrom = new Date(forced ? sendNowAt : Date.now() - 20 * 3_600_000).toISOString();
   const [{ n }] = await query<{ n: string }>(`SELECT count(*) AS n FROM prospects WHERE last_sent_at > $1`, [countFrom]);
   const room = quota - Number(n);
-  if (room <= 0) return 0;
+  if (room <= 0) return NOTHING;
   const steps = 1 + (cfg.imap ? OUTREACH.followUpDays.length : 0);
-  const due = await query<Prospect>(
-    `SELECT p.* FROM prospects p
-     WHERE p.email IS NOT NULL AND p.country = ANY($1)
-       AND (p.status = 'ready' OR (p.status = 'sent' AND p.step < $2 AND p.next_at <= now()))
-       AND NOT EXISTS (SELECT 1 FROM suppression s WHERE s.email = p.email)
-       AND NOT EXISTS (SELECT 1 FROM companies c WHERE c.email = p.email)
-     ORDER BY p.status = 'sent' DESC, p.created_at LIMIT $3`,
-    [cfg.countries, steps, room * 3],
-  );
-  if (due.length === 0) return 0;
   const nodemailer = await import("nodemailer");
   const transport = nodemailer.createTransport(process.env.OUTREACH_SMTP_URL!);
-  let sent = 0;
-  for (const p of due) {
-    if (sent >= room) break;
-    // Not a trade company's business address (schools, government), or malformed ("info@www.example.com"): a bounce or
-    // a wrong recipient hurts the sending domain's reputation, so it is skipped for good.
-    const host = (p.email!.split("@")[1] ?? "").toLowerCase();
-    if (host.startsWith("www.") || /\.(edu|gov|mil)$/.test(host) || /\.(ac|go|lg)\.jp$/.test(host)) {
-      await query(`UPDATE prospects SET status = 'skipped', note = 'not a business address' WHERE id = $1`, [p.id]);
-      continue;
+  try {
+    // A real project first: it is the email most worth the day's room.
+    const leadOffers = cfg.leadOffers ? await sendLeadOffers(transport, room, steps) : 0;
+    let sent = leadOffers;
+    if (sent >= room) return { sent, leadOffers };
+    // Operators wait, with no email at all, until their own texts are approved (OUTREACH_OPERATORS=on). An invited
+    // company (one lead offered, nothing taken) stays in its email sequence; any other account leaves it.
+    const due = await query<Prospect>(
+      `SELECT p.* FROM prospects p
+       WHERE p.email IS NOT NULL AND p.country = ANY($1)
+         AND (p.status = 'ready' OR (p.status = 'sent' AND p.step < $2 AND p.next_at <= now()))
+         AND ($4 OR NOT ${OPERATOR_SQL})
+         AND NOT EXISTS (SELECT 1 FROM suppression s WHERE s.email = p.email)
+         AND NOT EXISTS (SELECT 1 FROM companies c WHERE c.email = p.email AND c.status <> 'invited')
+       ORDER BY p.status = 'sent' DESC, p.created_at LIMIT $3`,
+      [cfg.countries, steps, (room - sent) * 3, cfg.operators],
+    );
+    for (const p of due) {
+      if (sent >= room) break;
+      // A bounce or a wrong recipient hurts the sending domain's reputation, so such an address is skipped for good.
+      if (notBusiness(p.email!)) {
+        await query(`UPDATE prospects SET status = 'skipped', note = 'not a business address' WHERE id = $1`, [p.id]);
+        continue;
+      }
+      try {
+        await sendOne(transport, p, renderOutreach(p, p.step));
+      } catch (error) {
+        console.error("[outreach] send failed:", error instanceof Error ? error.message : "unknown");
+        continue;
+      }
+      const step = p.step + 1;
+      const nextDays = step < steps ? OUTREACH.followUpDays[step - 1] - (step > 1 ? OUTREACH.followUpDays[step - 2] : 0) : null;
+      await query(`UPDATE prospects SET step = $2, status = $3, last_sent_at = now(), next_at = $4 WHERE id = $1`, [
+        p.id,
+        step,
+        nextDays === null ? "done" : "sent",
+        nextDays === null ? null : new Date(Date.now() + nextDays * 86_400_000),
+      ]);
+      sent++;
     }
-    const { subject, text } = renderOutreach(p, p.step);
-    const unsubscribe = `${SITE_URL}/api/unsubscribe?k=prospect&t=${p.id}`;
-    try {
-      await transport.sendMail({
-        from: process.env.OUTREACH_FROM,
-        to: p.email!,
-        // A reply reaches the outreach mailbox (read over IMAP, so follow-ups stop) and the inbox Samuel reads.
-        replyTo: [process.env.OUTREACH_FROM!, EMAIL],
-        subject,
-        text,
-        headers: { "List-Unsubscribe": `<${unsubscribe}>`, "List-Unsubscribe-Post": "List-Unsubscribe=One-Click" },
-      });
-    } catch (error) {
-      console.error("[outreach] send failed:", error instanceof Error ? error.message : "unknown");
-      continue;
-    }
-    const step = p.step + 1;
-    const nextDays = step < steps ? OUTREACH.followUpDays[step - 1] - (step > 1 ? OUTREACH.followUpDays[step - 2] : 0) : null;
-    await query(`UPDATE prospects SET step = $2, status = $3, last_sent_at = now(), next_at = $4 WHERE id = $1`, [
-      p.id,
-      step,
-      nextDays === null ? "done" : "sent",
-      nextDays === null ? null : new Date(Date.now() + nextDays * 86_400_000),
-    ]);
-    sent++;
+    return { sent, leadOffers };
+  } finally {
+    transport.close();
   }
-  transport.close();
-  return sent;
 }
 
 export async function unsubscribeProspect(id: string): Promise<string | null> {
@@ -438,7 +547,12 @@ export async function prospectById(id: string): Promise<Prospect | null> {
 
 export async function outreachStats(): Promise<Record<string, number>> {
   const rows = await query<{ status: string; n: string }>(`SELECT status, count(*) AS n FROM prospects GROUP BY status`);
-  return Object.fromEntries(rows.map((r) => [r.status, Number(r.n)]));
+  const stats: Record<string, number> = Object.fromEntries(rows.map((r) => [r.status, Number(r.n)]));
+  const [{ n }] = await query<{ n: string }>(`SELECT count(*) AS n FROM prospects p WHERE p.status = 'ready' AND ${OPERATOR_SQL}`);
+  stats[outreachConfig().operators ? "operatorsReady" : "operatorsWaitingForApproval"] = Number(n);
+  const [{ offers }] = await query<{ offers: string }>(`SELECT count(*) AS offers FROM prospects WHERE lead_offered_at IS NOT NULL`);
+  stats.leadInHandSent = Number(offers);
+  return stats;
 }
 
 /** The daily outreach run. Discovery and email finding always run; sending only when switched on. */
@@ -450,6 +564,6 @@ export async function dailyOutreach() {
     console.error("[outreach] imap failed:", error instanceof Error ? error.message : "unknown");
     return { replied: 0, bounced: 0 };
   });
-  const sent = await sendBatch();
-  return { ...found, ready, ...replies, sent, config: outreachConfig() };
+  const { sent, leadOffers } = await sendBatch();
+  return { ...found, ready, ...replies, sent, leadOffers, config: outreachConfig() };
 }

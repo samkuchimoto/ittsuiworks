@@ -381,6 +381,8 @@ export const ja: Dict = {
     full: "この案件は、すでに3社が受けています。",
     closed: "この案件は終了しました。",
     cancelled: "お支払いはキャンセルされました。料金は発生していません。",
+    paying: "お支払いにより、{terms}に同意したものとします。",
+    termsWord: "利用規約",
   },
   project: {
     title: "ご依頼の案件",

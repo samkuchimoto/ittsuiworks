@@ -92,15 +92,28 @@ export const OUTREACH = {
   warmupDays: 14,
   stepPerDay: 2,
   maxPerDay: 40,
+  /**
+   * Hard ceiling over the warm-up (Samuel, 15 November 2026: "Keep the 10-a-day limit from hello@getittsuiworks.com
+   * for now. Do not raise it yet."). Raise it only on his word; the warm-up above then applies again.
+   */
+  dailyCap: 10,
   /** Days between the first email and each follow-up. Follow-ups only run when replies can be read (IMAP). */
   followUpDays: [4, 11],
   /** Websites read per daily run to find a published business email. */
   enrichPerRun: 60,
+  /**
+   * Lead in hand (the way Thumbtack and Angi filled a new city): an open project that fewer than LEAD_SLOTS signed-up
+   * companies took is offered to companies of the same trade and country on the outreach list, from the outreach
+   * mailbox, inside the same daily limit. At most perProject a run for one project, maxPerProject in all, and one
+   * such email per company every spacingDays. Off unless OUTREACH_LEAD_OFFERS=on (Samuel approves the text first).
+   */
+  leadInHand: { perProject: 5, maxPerProject: 25, spacingDays: 7 },
 } as const;
 
 /** The day's limit, `days` after the first email from this sending domain. */
 export function outreachQuota(days: number): number {
   const o = OUTREACH;
-  if (days < o.warmupDays) return Math.round(o.warmupFrom + ((o.warmupTo - o.warmupFrom) * days) / (o.warmupDays - 1));
-  return Math.min(o.maxPerDay, o.warmupTo + o.stepPerDay * (days - o.warmupDays + 1));
+  const warm =
+    days < o.warmupDays ? Math.round(o.warmupFrom + ((o.warmupTo - o.warmupFrom) * days) / (o.warmupDays - 1)) : Math.min(o.maxPerDay, o.warmupTo + o.stepPerDay * (days - o.warmupDays + 1));
+  return Math.min(warm, o.dailyCap);
 }

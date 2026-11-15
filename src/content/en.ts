@@ -383,6 +383,8 @@ export const en = {
     full: "Three companies have taken this lead.",
     closed: "This project is closed.",
     cancelled: "Payment cancelled. Nothing was charged.",
+    paying: "By paying you accept the {terms}.",
+    termsWord: "terms",
   },
   project: {
     title: "Your project",

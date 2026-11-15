@@ -7,7 +7,7 @@ import { getDictionary } from "@/content";
 import { PRICING, paymentsOn } from "@/lib/config";
 import { hasDatabase, query } from "@/lib/db";
 import { listJobs, marketStats } from "@/lib/market";
-import { outreachConfig, outreachStats, renderOutreach, type Prospect } from "@/lib/outreach";
+import { isOperator, outreachConfig, outreachStats, renderLeadOffer, renderOutreach, type Prospect } from "@/lib/outreach";
 import { privatePage } from "@/lib/seo";
 
 export const metadata: Metadata = privatePage;
@@ -20,14 +20,35 @@ export default async function Admin({ params, searchParams }: PageProps<"/[lang]
   if (lang !== "en" || !secret || secret.length < 24 || key !== secret || !hasDatabase()) notFound();
   const t = getDictionary("en");
   const imported = (await searchParams).imported;
-  const [stats, prospects, { jobs }, sample] = await Promise.all([
+  const [stats, prospects, { jobs }, sample, operator] = await Promise.all([
     marketStats(),
     outreachStats(),
     listJobs({ perPage: 30 }),
     query<Prospect>(`SELECT * FROM prospects WHERE email IS NOT NULL ORDER BY status = 'ready' DESC, created_at DESC LIMIT 15`),
+    query<Prospect>(
+      `SELECT * FROM prospects WHERE email IS NOT NULL AND status = 'ready' AND (source = 'peeringdb' OR (source = 'osm' AND trade = 'datacenter')) ORDER BY created_at LIMIT 1`,
+    ),
   ]);
   const cfg = outreachConfig();
-  const preview = sample[0] ? renderOutreach(sample[0], 0) : null;
+  const contractor = sample.find((p) => !isOperator(p));
+  const preview = contractor ? renderOutreach(contractor, 0) : null;
+  // The two emails waiting for Samuel's approval, exactly as they would go out (the lead one with an example project).
+  const waiting = [
+    {
+      label: `Lead in hand (${cfg.leadOffers ? "on" : "waiting for approval"}), example project, as it would go to ${contractor?.company}`,
+      mail: contractor
+        ? renderLeadOffer(contractor, {
+            title: "Chiller replacement for a 4 MW data hall (example)",
+            place: "Dallas, TX, United States",
+            budget: "250,000 to 1 million USD",
+            start: "As soon as possible",
+            price: "$49",
+            link: "https://ittsuiworks.com/lead/...",
+          })
+        : null,
+    },
+    { label: `Operator first email (${cfg.operators ? "on" : "waiting for approval"}), as it would go to ${operator[0]?.company}`, mail: operator[0] ? renderOutreach(operator[0], 0) : null },
+  ];
   const box = "rounded-xl bg-mist px-4 py-3 text-[14.5px]";
 
   return (
@@ -48,7 +69,8 @@ export default async function Admin({ params, searchParams }: PageProps<"/[lang]
           <p className="mt-4 text-[14.5px] text-mute">
             Payments: {paymentsOn() ? "on" : `off (prices approved: ${PRICING.approved ? "yes" : "no"}, Stripe: ${process.env.STRIPE_SECRET_KEY ? "yes" : "no"})`}. Outreach sending:{" "}
             {cfg.sending ? "on" : `off (OUTREACH_LIVE ${cfg.live ? "on" : "off"}, SMTP ${cfg.smtp ? "set" : "missing"}, postal address ${cfg.address ? "set" : "missing"})`}. Replies read: {cfg.imap ? "yes" : "no (no follow-ups)"}.
-            Countries: {cfg.countries.join(", ")}.
+            Lead in hand: {cfg.leadOffers ? "on" : "off (waits for Samuel's OK, then OUTREACH_LEAD_OFFERS=on)"}. Operators:{" "}
+            {cfg.operators ? "on" : "no email until Samuel approves their text (then OUTREACH_OPERATORS=on)"}. Countries: {cfg.countries.join(", ")}.
           </p>
         </Card>
 
@@ -57,9 +79,18 @@ export default async function Admin({ params, searchParams }: PageProps<"/[lang]
           <p className="mt-2 text-[14.5px] text-mute">{Object.entries(prospects).map(([k, v]) => `${k}: ${v}`).join(" · ") || "Empty: the daily run fills it."}</p>
           {preview && (
             <div className="mt-5">
-              <p className="text-[13px] font-bold uppercase tracking-[0.14em] text-orange">First email, as it would go to {sample[0].company}</p>
+              <p className="text-[13px] font-bold uppercase tracking-[0.14em] text-orange">First email, as it would go to {contractor?.company}</p>
               <pre className="mt-2 whitespace-pre-wrap rounded-xl bg-sky p-4 text-[14px] leading-relaxed">{`Subject: ${preview.subject}\n\n${preview.text}`}</pre>
             </div>
+          )}
+          {waiting.map(
+            (w) =>
+              w.mail && (
+                <div key={w.label} className="mt-5">
+                  <p className="text-[13px] font-bold uppercase tracking-[0.14em] text-orange">{w.label}</p>
+                  <pre className="mt-2 whitespace-pre-wrap rounded-xl bg-sky p-4 text-[14px] leading-relaxed">{`Subject: ${w.mail.subject}\n\n${w.mail.text}`}</pre>
+                </div>
+              ),
           )}
           <ul className="mt-5 divide-y divide-line text-[14px]">
             {sample.map((p) => (
