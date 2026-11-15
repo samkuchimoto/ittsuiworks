@@ -328,9 +328,6 @@ export function renderOutreach(p: Prospect, step: number): { subject: string; te
 async function sendBatch(): Promise<number> {
   const cfg = outreachConfig();
   if (!cfg.sending) return 0;
-  // Business days only: the run is at 22:00 UTC, so Saturday and Sunday runs (US weekend) send nothing.
-  const day = new Date().getUTCDay();
-  if (day === 0 || day === 6) return 0;
   // The warm-up starts again for every new sending domain.
   const domain = (process.env.OUTREACH_FROM ?? "").match(/@([^>\s]+)/)?.[1]?.toLowerCase() ?? "default";
   let startedAt = await getState<string>(`outreach:started:${domain}`);
