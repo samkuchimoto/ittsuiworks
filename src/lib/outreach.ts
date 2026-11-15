@@ -328,12 +328,19 @@ export function renderOutreach(p: Prospect, step: number): { subject: string; te
 async function sendBatch(): Promise<number> {
   const cfg = outreachConfig();
   if (!cfg.sending) return 0;
+  const domain = (process.env.OUTREACH_FROM ?? "").match(/@([^>\s]+)/)?.[1]?.toLowerCase() ?? "default";
+  // One-off "send now" (Samuel, 15 Nov 2026: "If the daily limit blocks it, override or reset it and send anyway."):
+  // the state key outreach:send-now:<domain> holds the time it was set. For 2 hours after that time the weekend skip
+  // is lifted and the daily count only counts emails sent since then, so it buys exactly one extra batch. After the
+  // 2 hours the rules below apply again unchanged.
+  const sendNow = await getState<string>(`outreach:send-now:${domain}`);
+  const sendNowAt = sendNow ? new Date(sendNow).getTime() : Number.NaN;
+  const forced = Date.now() >= sendNowAt && Date.now() - sendNowAt < 2 * 3_600_000;
   // Business days only (Samuel, 15 Nov 2026: "Keep Monday"): the run is at 22:00 UTC, so Saturday and Sunday runs
   // (US weekend) send nothing.
   const day = new Date().getUTCDay();
-  if (day === 0 || day === 6) return 0;
+  if (!forced && (day === 0 || day === 6)) return 0;
   // The warm-up starts again for every new sending domain.
-  const domain = (process.env.OUTREACH_FROM ?? "").match(/@([^>\s]+)/)?.[1]?.toLowerCase() ?? "default";
   let startedAt = await getState<string>(`outreach:started:${domain}`);
   if (!startedAt) {
     startedAt = new Date().toISOString();
@@ -341,7 +348,8 @@ async function sendBatch(): Promise<number> {
   }
   const days = Math.floor((Date.now() - new Date(startedAt).getTime()) / 86_400_000);
   const quota = outreachQuota(days);
-  const [{ n }] = await query<{ n: string }>(`SELECT count(*) AS n FROM prospects WHERE last_sent_at > now() - interval '20 hours'`);
+  const countFrom = new Date(forced ? sendNowAt : Date.now() - 20 * 3_600_000).toISOString();
+  const [{ n }] = await query<{ n: string }>(`SELECT count(*) AS n FROM prospects WHERE last_sent_at > $1`, [countFrom]);
   const room = quota - Number(n);
   if (room <= 0) return 0;
   const steps = 1 + (cfg.imap ? OUTREACH.followUpDays.length : 0);
