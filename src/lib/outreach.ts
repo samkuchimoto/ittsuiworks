@@ -15,7 +15,7 @@ import "server-only";
 import { fill } from "@/content";
 import { OUTREACH, TRADES, isTrade, outreachQuota } from "./config";
 import { countryName, isCountry } from "./countries";
-import { getState, hasDatabase, newId, query, setState } from "./db";
+import { getState, hasDatabase, newId, query, releaseLock, setState, takeLock } from "./db";
 import { trySendMail } from "./mail";
 import { OUTREACH_TEXTS } from "./outreach-texts";
 import { EMAIL, SITE_URL, pathFor } from "./site";
@@ -326,9 +326,26 @@ export function renderOutreach(p: Prospect, step: number): { subject: string; te
 }
 
 async function sendBatch(): Promise<number> {
-  const cfg = outreachConfig();
-  if (!cfg.sending) return 0;
+  if (!outreachConfig().sending) return 0;
   const domain = (process.env.OUTREACH_FROM ?? "").match(/@([^>\s]+)/)?.[1]?.toLowerCase() ?? "default";
+  // One batch at a time: two runs at once (a click on Run while a run is going) would both pick the same companies
+  // and email them twice. The lock outlasts the longest run (maxDuration 300 s), so a run cut off still frees it.
+  const lock = `outreach:sending:${domain}`;
+  if (!(await takeLock(lock, 6 * 60_000))) {
+    console.log("[outreach] another run is sending: nothing sent by this one");
+    return 0;
+  }
+  try {
+    const sent = await sendLocked(domain);
+    console.log(`[outreach] sent ${sent} from ${domain}`);
+    return sent;
+  } finally {
+    await releaseLock(lock).catch(() => undefined);
+  }
+}
+
+async function sendLocked(domain: string): Promise<number> {
+  const cfg = outreachConfig();
   // One-off "send now" (Samuel, 15 Nov 2026: "If the daily limit blocks it, override or reset it and send anyway."):
   // the state key outreach:send-now:<domain> holds the time it was set. For 2 hours after that time the weekend skip
   // is lifted and the daily count only counts emails sent since then, so it buys exactly one extra batch. After the

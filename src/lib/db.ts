@@ -191,3 +191,20 @@ export async function getState<T>(key: string): Promise<T | null> {
 export async function setState(key: string, value: unknown): Promise<void> {
   await query(`INSERT INTO state (key, value) VALUES ($1, $2) ON CONFLICT (key) DO UPDATE SET value = $2`, [key, JSON.stringify(value)]);
 }
+
+/**
+ * A lock shared by every server instance, for work that must never run twice at once (two runs of the same cron,
+ * such as a click on Run during a scheduled run). False while another holder's lock has not expired.
+ */
+export async function takeLock(key: string, ms: number): Promise<boolean> {
+  const rows = await query(
+    `INSERT INTO state (key, value) VALUES ($1, to_jsonb($2::text))
+     ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value WHERE (state.value #>> '{}')::timestamptz < now()
+     RETURNING key`,
+    [key, new Date(Date.now() + ms).toISOString()],
+  );
+  return rows.length > 0;
+}
+export async function releaseLock(key: string): Promise<void> {
+  await query(`DELETE FROM state WHERE key = $1`, [key]);
+}
