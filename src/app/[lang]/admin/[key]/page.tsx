@@ -20,7 +20,7 @@ export default async function Admin({ params, searchParams }: PageProps<"/[lang]
   if (lang !== "en" || !secret || secret.length < 24 || key !== secret || !hasDatabase()) notFound();
   const t = getDictionary("en");
   const imported = (await searchParams).imported;
-  const [stats, prospects, { jobs }, sample, operator] = await Promise.all([
+  const [stats, prospects, { jobs }, sample, operator, firstContractor] = await Promise.all([
     marketStats(),
     outreachStats(),
     listJobs({ perPage: 30 }),
@@ -28,9 +28,13 @@ export default async function Admin({ params, searchParams }: PageProps<"/[lang]
     query<Prospect>(
       `SELECT * FROM prospects WHERE email IS NOT NULL AND status = 'ready' AND (source = 'peeringdb' OR (source = 'osm' AND trade = 'datacenter')) ORDER BY created_at LIMIT 1`,
     ),
+    query<Prospect>(
+      `SELECT * FROM prospects WHERE email IS NOT NULL AND status = 'ready' AND NOT (source = 'peeringdb' OR (source = 'osm' AND trade = 'datacenter')) ORDER BY created_at LIMIT 1`,
+    ),
   ]);
   const cfg = outreachConfig();
-  const contractor = sample.find((p) => !isOperator(p));
+  // The next contractor in line (the newest rows are often operators).
+  const contractor = firstContractor[0] ?? sample.find((p) => !isOperator(p));
   const preview = contractor ? renderOutreach(contractor, 0) : null;
   // The two emails waiting for Samuel's approval, exactly as they would go out (the lead one with an example project).
   const waiting = [

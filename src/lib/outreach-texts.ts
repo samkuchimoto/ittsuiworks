@@ -123,7 +123,7 @@ export const OPERATOR_TEXTS = {
         lines: [
           "Hello {company} team,",
           "",
-          "Post your cooling, power or fit-out work on Ittsui Works. HVAC and electrical companies in {country} get it, and up to three of them can take it and contact you. Free for you.",
+          "Post your cooling, power or fit-out work on Ittsui Works. HVAC and electrical companies in your country get it, and up to three of them can take it and contact you. Free for you.",
           "",
           "Post a project: {postProject}",
           "",
@@ -133,7 +133,7 @@ export const OPERATOR_TEXTS = {
       OUTREACH_TEXTS.en.steps[1],
       {
         subject: "Cooling and power work at {company}?",
-        lines: ["Hello,", "One short form, free for you: HVAC and electrical companies in {country} see your project, and three at most take it:", "{postProject}"],
+        lines: ["Hello,", "One short form, free for you: HVAC and electrical companies in your country see your project, and three at most take it:", "{postProject}"],
       },
     ],
   },
