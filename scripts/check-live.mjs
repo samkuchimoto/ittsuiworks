@@ -59,6 +59,13 @@ for (const path of pages) {
 
 // 2. Every linked page and file answers, with the right type.
 for (const url of [...assets].sort()) {
+  // "Apply with the employer" goes out through /api/go: a redirect to the employer's page, tagged, never counted for HEAD.
+  if (url.startsWith("/api/go/")) {
+    const res = await get(url, { method: "HEAD" });
+    const to = res.headers.get("location") ?? "";
+    check(res.status === 302 && /^https?:\/\//.test(to) && (to.includes("utm_source=ittsuiworks") || to.startsWith(base)), `${url}: 302 to the employer, tagged`);
+    continue;
+  }
   const res = await get(url, url.endsWith(".mp4") ? { headers: { Range: "bytes=0-1" } } : { method: "HEAD" });
   const type = res.headers.get("content-type") ?? "";
   const expected = url.endsWith(".mp4") ? 206 : 200;

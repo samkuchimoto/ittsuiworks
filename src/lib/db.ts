@@ -161,6 +161,11 @@ CREATE TABLE IF NOT EXISTS state (
   key text PRIMARY KEY,
   value jsonb NOT NULL
 );
+CREATE TABLE IF NOT EXISTS apply_clicks (
+  job_id text NOT NULL REFERENCES jobs(id) ON DELETE CASCADE,
+  at timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS apply_clicks_at ON apply_clicks (at);
 `;
 
 function ensureSchema(): Promise<void> {

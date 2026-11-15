@@ -47,7 +47,8 @@ export default async function JobPage({ params }: PageProps<"/[lang]/jobs/[id]">
   const live = isLive(job);
   const pay = payText(job, t.ui, lang);
   const external = Boolean(job.apply_url) || !collectsSeekers(job.country);
-  const applyHref = job.apply_url.includes("@") && !job.apply_url.startsWith("http") ? `mailto:${job.apply_url}` : job.apply_url;
+  // Web links go through /api/go, which counts the click and tags Ittsui Works as the source (lib/clicks.ts).
+  const applyHref = job.apply_url.includes("@") && !job.apply_url.startsWith("http") ? `mailto:${job.apply_url}` : /^https?:\/\//i.test(job.apply_url) ? `/api/go/${job.id}` : job.apply_url;
   const featured = job.sponsored_until !== null && new Date(job.sponsored_until) > new Date();
   const canFeature = live && !featured && paymentsOn();
   const featurePrice = sponsorPrice({ country: job.country });

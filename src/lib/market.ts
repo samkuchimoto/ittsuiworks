@@ -905,6 +905,7 @@ export async function dailyMarket() {
   await query(`DELETE FROM jobs WHERE status IN ('closed', 'expired') AND COALESCE(expires_at, created_at) < now() - interval '12 months'`);
   await query(`DELETE FROM leads WHERE project_id IN (SELECT id FROM projects WHERE status = 'closed' AND created_at < now() - interval '13 months')`);
   await query(`DELETE FROM projects WHERE status = 'closed' AND created_at < now() - interval '13 months'`);
+  await query(`DELETE FROM apply_clicks WHERE at < now() - interval '13 months'`);
   // An invited company exists only for the leads it was offered.
   await query(`DELETE FROM companies c WHERE c.status = 'invited' AND NOT EXISTS (SELECT 1 FROM leads l WHERE l.company_id = c.id) AND NOT EXISTS (SELECT 1 FROM jobs j WHERE j.company_id = c.id)`);
 
@@ -941,6 +942,7 @@ export async function marketStats() {
     newJobs: await one(`SELECT count(*) AS n FROM jobs WHERE status = 'live' AND GREATEST(published_at, created_at) > now() - interval '1 day'`),
     importedJobs: await one(`SELECT count(*) AS n FROM jobs WHERE status = 'live' AND expires_at > now() AND source IS NOT NULL`),
     applications: await one(`SELECT count(*) AS n FROM applications WHERE created_at > now() - interval '1 day'`),
+    applyClicks: await one(`SELECT count(*) AS n FROM apply_clicks WHERE at > now() - interval '1 day'`),
     alerts: await one(`SELECT count(*) AS n FROM alerts WHERE status = 'active'`),
     companies: await one(`SELECT count(*) AS n FROM companies WHERE status = 'active'`),
     leadCompanies: await one(`SELECT count(*) AS n FROM companies WHERE status = 'active' AND leads`),

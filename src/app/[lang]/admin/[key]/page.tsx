@@ -4,6 +4,7 @@ import { connection } from "next/server";
 import { adminCloseJobAction, importProspectsAction } from "@/app/actions";
 import { Card, Shell } from "@/components/Shell";
 import { getDictionary } from "@/content";
+import { clicksByEmployer } from "@/lib/clicks";
 import { PRICING, paymentsOn } from "@/lib/config";
 import { hasDatabase, query } from "@/lib/db";
 import { listJobs, marketStats } from "@/lib/market";
@@ -20,7 +21,7 @@ export default async function Admin({ params, searchParams }: PageProps<"/[lang]
   if (lang !== "en" || !secret || secret.length < 24 || key !== secret || !hasDatabase()) notFound();
   const t = getDictionary("en");
   const imported = (await searchParams).imported;
-  const [stats, prospects, { jobs }, sample, operator, firstContractor] = await Promise.all([
+  const [stats, prospects, { jobs }, sample, operator, firstContractor, employers] = await Promise.all([
     marketStats(),
     outreachStats(),
     listJobs({ perPage: 30 }),
@@ -31,6 +32,7 @@ export default async function Admin({ params, searchParams }: PageProps<"/[lang]
     query<Prospect>(
       `SELECT * FROM prospects WHERE email IS NOT NULL AND status = 'ready' AND NOT (source = 'peeringdb' OR (source = 'osm' AND trade = 'datacenter')) ORDER BY created_at LIMIT 1`,
     ),
+    clicksByEmployer(30, 30),
   ]);
   const cfg = outreachConfig();
   // The next contractor in line (the newest rows are often operators).
@@ -116,6 +118,27 @@ export default async function Admin({ params, searchParams }: PageProps<"/[lang]
             <textarea id="csv" name="csv" rows={5} className="field font-mono text-[13px]" placeholder="Acme Mechanical, info@acmemech.com, acmemech.com, US, hvac" />
             <button className="rounded-md bg-navy px-5 py-3 text-[15px] font-semibold text-white">Import</button>
           </form>
+        </Card>
+
+        <Card>
+          <h2 className="text-[20px] font-bold text-navy">Apply clicks by employer (30 days)</h2>
+          <p className="mt-2 text-[14.5px] text-mute">
+            Technicians sent to the employer&apos;s own page, tagged with Ittsui Works as the source (utm_source=ittsuiworks; on Lever boards the application is marked &quot;Ittsui Works&quot;). Crawlers and link checkers are not counted.
+          </p>
+          {employers.length ? (
+            <ul className="mt-4 divide-y divide-line text-[14.5px]">
+              {employers.map((e) => (
+                <li key={e.company} className="flex justify-between gap-3 py-2">
+                  <b>{e.company}</b>
+                  <span className="text-mute">
+                    {`${e.clicks} ${e.clicks === 1 ? "click" : "clicks"} · ${e.jobs} ${e.jobs === 1 ? "job" : "jobs"}`}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className={`mt-4 ${box}`}>None yet.</p>
+          )}
         </Card>
 
         <Card>

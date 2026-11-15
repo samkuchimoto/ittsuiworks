@@ -1,4 +1,5 @@
 import { IMPORT, PRICING, paymentsOn } from "@/lib/config";
+import { clicksByEmployer } from "@/lib/clicks";
 import { hasDatabase } from "@/lib/db";
 import { mailConfigured, trySendMail } from "@/lib/mail";
 import { dailyMarket, marketStats } from "@/lib/market";
@@ -30,13 +31,15 @@ export async function GET(request: Request) {
   const outreach = await dailyOutreach().catch((error) => ({ error: error instanceof Error ? error.message : "unknown" }));
   const stats = await marketStats().catch(() => null);
   const prospects = await outreachStats().catch(() => ({}));
+  const employers = await clicksByEmployer(30, 10).catch(() => []);
 
   await trySendMail({
     subject: `Ittsui Works daily: ${stats ? `${stats.liveJobs} live jobs, ${stats.applications} applications, ${stats.leadsSold} leads sold` : "check the run"}`,
     lines: [
       stats
-        ? `Live jobs: ${stats.liveJobs} (${stats.newJobs} new, ${stats.importedJobs} from careers pages). Applications (24 h): ${stats.applications}. Job alerts on: ${stats.alerts}.`
+        ? `Live jobs: ${stats.liveJobs} (${stats.newJobs} new, ${stats.importedJobs} from careers pages). Applications (24 h): ${stats.applications}. Apply clicks sent to employers (24 h): ${stats.applyClicks}. Job alerts on: ${stats.alerts}.`
         : "Stats failed.",
+      `Apply clicks by employer (30 days): ${employers.map((e) => `${e.company} ${e.clicks}`).join(", ") || "none yet"}.`,
       stats ? `Companies: ${stats.companies} (${stats.leadCompanies} with leads on). Projects: ${stats.openProjects} open, ${stats.waitingProjects} waiting, ${stats.newProjects} new. Leads sold (24 h): ${stats.leadsSold}.` : "",
       `Run: ${JSON.stringify(market)}`,
       `Outreach: ${JSON.stringify(outreach)}`,
