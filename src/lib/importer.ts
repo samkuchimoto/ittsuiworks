@@ -10,7 +10,7 @@ import "server-only";
 import { IMPORT } from "./config";
 import { isCountry } from "./countries";
 import { hasDatabase, newId, newToken, query } from "./db";
-import { FEEDS, jobFromListing, listFeed, type Feed, type FeedJob, type FeedListing } from "./feeds";
+import { FEEDS, jobFromListing, listFeed, tradeOf, tradesOf, type Feed, type FeedJob, type FeedListing } from "./feeds";
 import { jobUrls, pingIndexNow } from "./market";
 
 const sourceKey = (feed: Feed) => `${feed.ats}:${feed.slug}`;
@@ -34,7 +34,7 @@ async function companyFor(feed: Feed): Promise<string> {
     `INSERT INTO companies (id, name, email, website, country, trades, lang, token, status)
      VALUES ($1, $2, $3, $4, 'US', $5, 'en', $6, 'imported')
      ON CONFLICT (email) DO UPDATE SET name = EXCLUDED.name, website = EXCLUDED.website RETURNING id`,
-    [newId(), feed.name, `${feed.ats}-${feed.slug}@import.invalid`, feed.website, [feed.trade], newToken()],
+    [newId(), feed.name, `${feed.ats}-${feed.slug}@import.invalid`, feed.website, tradesOf(feed), newToken()],
   );
   return row.id;
 }
@@ -65,9 +65,9 @@ async function importFeed(feed: Feed, budget: { left: number }): Promise<FeedRes
       const [row] = await query<{ id: string }>(
         `INSERT INTO jobs (id, company_id, title, trade, employment, country, city, pay_min, pay_max, pay_currency, pay_unit,
            description, certifications, apply_url, lang, status, published_at, expires_at, source, source_id)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, '', $13, 'en', 'live', $14, now() + make_interval(days => $15), $16, $17)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, '', $13, $18, 'live', $14, now() + make_interval(days => $15), $16, $17)
          ON CONFLICT (source, source_id) DO NOTHING RETURNING id`,
-        [newId(), companyId, j.title, feed.trade, j.employment, j.country, j.city, j.payMin, j.payMax, j.payCurrency, j.payUnit, j.description, j.applyUrl, j.postedAt ?? new Date(), IMPORT.keepDays, source, j.sourceId],
+        [newId(), companyId, j.title, tradeOf(feed, j.title), j.employment, j.country, j.city, j.payMin, j.payMax, j.payCurrency, j.payUnit, j.description, j.applyUrl, j.postedAt ?? new Date(), IMPORT.keepDays, source, j.sourceId, j.lang],
       );
       if (row) urls.push(...jobUrls(row));
     }

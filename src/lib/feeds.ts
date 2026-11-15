@@ -16,11 +16,13 @@ export type Feed = {
   trade: FeedTrade;
   /** Extra title filter for employers that hire far beyond our trades (AI labs, defence). */
   only?: RegExp;
+  /** One employer, several trades: the first pattern matching the title decides the trade; titles matching none are left out. */
+  split?: [FeedTrade, RegExp][];
 };
 
 const DC = /data ?cent(er|re)|datacenter|critical (facilit|environment)|facilit(y|ies)|stargate/i;
 
-/** Employers whose public feeds carry technician jobs in our trades (checked 14 November 2026). */
+/** Employers whose public feeds carry technician jobs in our trades (checked 14 and 15 November 2026). */
 export const FEEDS: Feed[] = [
   // Data centers
   { ats: "greenhouse", slug: "xai", name: "xAI", website: "https://x.ai", trade: "datacenter", only: /data ?cent|facilit|critical|commissioning|electric|mechanic|controls|\bbms\b|technician|operator/i },
@@ -41,26 +43,51 @@ export const FEEDS: Feed[] = [
   { ats: "greenhouse", slug: "elementcritical", name: "Element Critical", website: "https://www.elementcritical.com", trade: "datacenter" },
   { ats: "greenhouse", slug: "hut8", name: "Hut 8", website: "https://hut8.com", trade: "datacenter" },
   { ats: "lever", slug: "cleanspark", name: "CleanSpark", website: "https://www.cleanspark.com", trade: "datacenter", only: /facilit|electric|technician|maintenance/i },
+  { ats: "lever", slug: "serverfarm", name: "Serverfarm", website: "https://www.serverfarmllc.com", trade: "datacenter" },
+  { ats: "greenhouse", slug: "flexentialcorp", name: "Flexential", website: "https://www.flexential.com", trade: "datacenter" },
+  { ats: "ashby", slug: "vultr", name: "Vultr", website: "https://www.vultr.com", trade: "datacenter", only: DC },
+  { ats: "ashby", slug: "verda", name: "Verda", website: "https://verda.com", trade: "datacenter", only: DC },
+  { ats: "greenhouse", slug: "nlighten", name: "nLighten", website: "https://www.nlighten.com", trade: "datacenter" },
+  { ats: "greenhouse", slug: "colovore", name: "Colovore", website: "https://www.colovore.com", trade: "datacenter" },
+  { ats: "ashby", slug: "sfcompute", name: "SF Compute", website: "https://sfcompute.com", trade: "datacenter", only: DC },
+  { ats: "greenhouse", slug: "startcampus", name: "Start Campus", website: "https://www.startcampus.pt", trade: "datacenter" },
   // HVAC
   { ats: "lever", slug: "sila", name: "Sila", website: "https://www.silaservices.com", trade: "hvac", only: /hvac|heating|cooling|air condition|boiler|furnace|refrigerat|heat pump|geothermal|sheet metal|duct|comfort/i },
   { ats: "greenhouse", slug: "jetsonhome", name: "Jetson", website: "https://www.jetsonhome.com", trade: "hvac" },
   { ats: "ashby", slug: "zerohomes", name: "Zero Homes", website: "https://www.zerohomes.io", trade: "hvac" },
   { ats: "greenhouse", slug: "quilt", name: "Quilt", website: "https://www.quilt.com", trade: "hvac" },
   { ats: "ashby", slug: "dandelion", name: "Dandelion Energy", website: "https://dandelionenergy.com", trade: "hvac" },
+  { ats: "lever", slug: "octoenergy", name: "Octopus Energy", website: "https://octopus.energy", trade: "hvac", only: /heat pump/i },
+  // SpaceX builds rockets; only its facilities HVAC, data center and ship jobs are ours.
+  {
+    ats: "greenhouse", slug: "spacex", name: "SpaceX", website: "https://www.spacex.com", trade: "hvac",
+    split: [
+      ["datacenter", /data ?cent/i],
+      ["marine", /\bark vessel|recovery vessel|marine|deckhand|seaman|\bmate\b|captain/i],
+      ["hvac", /hvac|refrigerat|chiller|mechanical technician \(facilities\)|facilities technician(, mechanical| \(mep\))/i],
+    ],
+  },
   // Marine
   { ats: "ashby", slug: "saronic", name: "Saronic", website: "https://www.saronic.com", trade: "marine" },
   { ats: "greenhouse", slug: "arcboatcompany", name: "Arc Boats", website: "https://arcboats.com", trade: "marine" },
   { ats: "ashby", slug: "havocai", name: "HavocAI", website: "https://www.havocai.com", trade: "marine" },
   { ats: "greenhouse", slug: "andurilindustries", name: "Anduril", website: "https://www.anduril.com", trade: "marine", only: /marine|maritime|vessel|boat|\bship|subsea|undersea|\bdive|\bmate\b|captain|deckhand|seaman/i },
+  { ats: "ashby", slug: "regent", name: "REGENT", website: "https://www.regentcraft.com", trade: "marine" },
 ];
 
 /** Technician work: the trades, not the office. */
 const TECH =
-  /technician|hvac tech\b|service tech\b|installer|electrician|mechanic\b|mechanics\b|plumber|pipefitter|steamfitter|fitter|welder|operator|foreman|apprentice|helper|journeyman|critical (facilit|environment)|facilit(y|ies) (engineer|technician|operator|specialist)|operations engineer|shift (engineer|technician|lead|supervisor)|commissioning|\bbms\b|\bbas\b|controls (technician|engineer|specialist)|chief engineer|stationary engineer|building engineer|data ?cent(er|re) (technician|engineer|operations|ops)|deckhand|\bmate\b|captain|able seaman|boatswain|marine (engineer|technician|electrician|mechanic)|service engineer|field (service|systems)|maintenance/i;
+  /technician|hvac tech\b|service tech\b|installer|electrician|mechanic\b|mechanics\b|plumber|pipefitter|steamfitter|fitter|welder|operator|foreman|apprentice|helper|journeyman|critical (facilit|environment)|facilit(y|ies) (engineer|technician|operator|specialist)|operations engineer|shift (engineer|technician|lead|supervisor)|commissioning|\bbms\b|\bbas\b|controls (technician|engineer|specialist)|chief engineer|stationary engineer|building engineer|data ?cent(er|re) (technician|engineer|operations|ops)|deckhand|\bmate\b|captain|able seaman|boatswain|assistant engineer|marine (engineer|technician|electrician|mechanic)|service engineer|field (service|systems)|maintenance|heat pump (engineer|technician|fitter)|refrigeration engineer/i;
 const OFFICE =
   /\bintern\b|internship|co-op|software|recruit|sales|marketing|account (executive|manager)|financ|legal|counsel|product (manager|lead)|designer|scien|analyst|machine learning|research|director|president|\bvp\b|head of|architect|sourcing|procurement|buyer|cost engineer|scheduler|manager|coordinator|people|talent|payroll|hardware engineer|performance|outcomes|business|strategy|writer|\bit\b|network|security|\bgtm\b|customer success|help ?desk|storage/i;
 
-export const isTechJob = (feed: Feed, title: string) => TECH.test(title) && !OFFICE.test(title) && (!feed.only || feed.only.test(title));
+export const isTechJob = (feed: Feed, title: string) =>
+  TECH.test(title) && !OFFICE.test(title) && (!feed.only || feed.only.test(title)) && (!feed.split || feed.split.some(([, re]) => re.test(title)));
+
+/** The trade of one of the employer's jobs. */
+export const tradeOf = (feed: Feed, title: string): FeedTrade => feed.split?.find(([, re]) => re.test(title))?.[0] ?? feed.trade;
+/** Every trade the employer is listed under. */
+export const tradesOf = (feed: Feed): FeedTrade[] => (feed.split ? [...new Set(feed.split.map(([t]) => t))] : [feed.trade]);
 
 // ------------------------------------------------------------------ places
 
@@ -96,7 +123,8 @@ function countryByName(name: string): string | null {
         const code = String.fromCharCode(a, b);
         try {
           const n = display.of(code);
-          // First code wins: "United Kingdom" is GB, not the reserved UK.
+          // Retired codes still carry today's names (DD is "Germany", VD "Vietnam", UK "United Kingdom"): skip them.
+          if (Intl.getCanonicalLocales(`und-${code}`)[0] !== `und-${code}`) continue;
           if (n && n !== code && !countryNames.has(n.toLowerCase())) countryNames.set(n.toLowerCase(), code);
         } catch {
           // not a region code
@@ -143,18 +171,44 @@ const KNOWN_CITIES: Record<string, string> = {
   london: "GB", dublin: "IE", amsterdam: "NL", frankfurt: "DE", paris: "FR", madrid: "ES", milan: "IT", stockholm: "SE", oslo: "NO",
   copenhagen: "DK", helsinki: "FI", reykjavik: "IS", toronto: "CA", montreal: "CA", dubai: "AE", riyadh: "SA", mumbai: "IN",
   bangkok: "TH", manila: "PH", seoul: "KR", "são paulo": "BR", "sao paulo": "BR", "mexico city": "MX",
+  berlin: "DE", hamburg: "DE", munich: "DE", münchen: "DE", stuttgart: "DE", cologne: "DE", köln: "DE", vienna: "AT", zurich: "CH",
+  zürich: "CH", brussels: "BE", warsaw: "PL", prague: "CZ", lisbon: "PT", sines: "PT", barcelona: "ES", riga: "LV", tallinn: "EE",
+  vilnius: "LT", manchester: "GB", liverpool: "GB",
 };
 
+/** A city's name, never a site code ("ATL2") and without a building number ("Atlanta-5" is Atlanta). */
+function cityName(raw: string | undefined): string | undefined {
+  const city = raw?.replace(/[-\s]*\d+$/, "").trim();
+  return city && city.length <= 60 && /\p{Ll}/u.test(city) ? city : undefined;
+}
+
+/** "Slough (GB)": an ISO country code in brackets after the place. */
+function isoCode(code: string): string | null {
+  try {
+    return countryByName(new Intl.DisplayNames(["en"], { type: "region" }).of(code) ?? "") === code ? code : null;
+  } catch {
+    return null;
+  }
+}
+
 function parseOne(segment: string): { city: string; country: string } | null {
-  const text = segment.replace(/\([^)]*\)/g, " ").replace(/\b(remote|hybrid|on-?site|onsite)\b(-friendly)?\s*[-:]?/gi, " ").trim();
+  const coded = segment.match(/^(.*?)\s*\(([A-Z]{2})\)\s*$/);
+  const codedCountry = coded ? isoCode(coded[2]) : null;
+  const text = (codedCountry ? coded![1] : segment).replace(/\([^)]*\)/g, " ").replace(/\b(remote|hybrid|on-?site|onsite)\b(-friendly)?\s*[-:]?/gi, " ").trim();
   const parts = text.split(/,|\s[-–]\s/).map((p) => p.trim()).filter(Boolean);
   if (parts.length === 0) return null;
   for (let i = parts.length - 1; i >= 0; i--) {
     const country = countryOf(parts[i], i > 0);
     if (!country) continue;
-    const city = parts.slice(0, i).find((p) => !countryOf(p, false) || isRegionOnly(p)) ?? (CITY_STATES.has(country) ? parts[i] : undefined);
-    if (!city || city.length > 60) return null;
-    return { city, country };
+    // "Memphis, TN": the city comes first. "GA - Norcross": the state comes first.
+    const before = parts.slice(0, i).find((p) => !countryOf(p, false) || isRegionOnly(p));
+    const after = i === 0 && isRegionOnly(parts[0]) ? parts[1] : undefined;
+    const city = cityName(before ?? after) ?? (CITY_STATES.has(country) ? parts[i] : undefined);
+    return city ? { city, country: codedCountry ?? country } : null;
+  }
+  if (codedCountry) {
+    const city = cityName(parts[0]);
+    return city ? { city, country: codedCountry } : null;
   }
   const known = KNOWN_CITIES[parts[0].toLowerCase()];
   return known && parts.length === 1 ? { city: parts[0], country: known } : null;
@@ -216,7 +270,26 @@ export type FeedJob = {
   description: string;
   applyUrl: string;
   postedAt: Date | null;
+  /** The language the employer wrote the job in ("en", "de", "fr"...), for the page's lang attribute. */
+  lang: string;
 };
+
+const WORDS: Record<string, Set<string>> = {
+  en: new Set("the and you with for our will are your this that have".split(" ")),
+  de: new Set("und die der das wir sie mit für ist eine auf bei dich unsere".split(" ")),
+  fr: new Set("et les des nous vous pour avec une dans est sur vos".split(" ")),
+  es: new Set("y los las para con una del nuestro por tu nuestra".split(" ")),
+  it: new Set("il per con una della nostro che sono gli nostra".split(" ")),
+  nl: new Set("en het een van wij voor met je zijn jouw onze".split(" ")),
+  pt: new Set("os as para com uma nosso não você nossa".split(" ")),
+};
+/** English unless the text is clearly written in another language. */
+export function textLang(text: string): string {
+  const words = text.toLowerCase().slice(0, 3000).match(/\p{L}+/gu) ?? [];
+  const score = Object.fromEntries(Object.entries(WORDS).map(([lang, set]) => [lang, words.filter((w) => set.has(w)).length]));
+  const [best, n] = Object.entries(score).sort((a, b) => b[1] - a[1])[0];
+  return best !== "en" && n >= 10 && n > score.en * 2 ? best : "en";
+}
 
 const UA = "Mozilla/5.0 (compatible; IttsuiWorksJobs/1.0; +https://ittsuiworks.com)";
 async function getJson(url: string): Promise<unknown> {
@@ -251,7 +324,8 @@ function sanePay(p: Pay): Pay {
 }
 /** A page with almost no text helps nobody and search engines skip it. */
 const MIN_DESCRIPTION = 200;
-const finish = (job: FeedJob): FeedJob | null => (job.description.length < MIN_DESCRIPTION ? null : { ...job, ...sanePay(job) });
+const finish = (job: Omit<FeedJob, "lang">): FeedJob | null =>
+  job.description.length < MIN_DESCRIPTION ? null : { ...job, ...sanePay(job), lang: textLang(`${job.title}\n${job.description}`) };
 const noPay = (): Pay => ({ payMin: null, payMax: null, payCurrency: "USD", payUnit: "hour" });
 const validDate = (v: unknown) => {
   const d = v ? new Date(v as string | number) : null;
@@ -295,7 +369,7 @@ export async function jobFromListing(feed: Feed, listing: FeedListing): Promise<
     const parsed = parsePlace(j.categories?.location);
     const country = j.country && /^[A-Z]{2}$/.test(j.country) ? j.country : parsed?.country;
     const location = j.categories?.location ?? "";
-    const city = parsed?.city ?? (/remote/i.test(location) ? undefined : location.split(",")[0]?.trim());
+    const city = parsed?.city ?? (/remote/i.test(location) ? undefined : cityName(location.split(",")[0]?.replace(/\([^)]*\)/g, " ")));
     if (!country || !city || !j.hostedUrl) return null;
     const unit = unitOf(j.salaryRange?.interval);
     const pay: Pay = j.salaryRange && unit && (j.salaryRange.min || j.salaryRange.max) ? { payMin: j.salaryRange.min ?? null, payMax: j.salaryRange.max ?? null, payCurrency: j.salaryRange.currency || "USD", payUnit: unit } : noPay();
