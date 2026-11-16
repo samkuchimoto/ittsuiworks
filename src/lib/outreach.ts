@@ -61,7 +61,8 @@ export function outreachConfig() {
   // Each new kind of email waits for Samuel's approval of its words (outreach-texts.ts), then one Vercel switch.
   const leadOffers = process.env.OUTREACH_LEAD_OFFERS === "on";
   const operators = process.env.OUTREACH_OPERATORS === "on";
-  return { live, smtp, address, imap, sending: live && smtp && address, leadOffers, operators, countries: outreachCountries() };
+  const paused = OUTREACH.paused;
+  return { live, paused, smtp, address, imap, sending: live && smtp && address && !paused, leadOffers, operators, countries: outreachCountries() };
 }
 
 // ------------------------------------------------------------------ domains and emails

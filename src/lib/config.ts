@@ -80,6 +80,13 @@ export const ALERT_DAILY_CAP = 40;
  * forms of every site. It needs its own mailbox: OUTREACH_SMTP_URL, OUTREACH_FROM, OUTREACH_POSTAL_ADDRESS.
  */
 export const OUTREACH = {
+  /**
+   * PAUSED (Samuel, 16 November 2026): Ittsui Works no longer pitches contractors to buy leads; it becomes a B2B
+   * technical recruiting and subcontractor sourcing network. While true, nothing is emailed by outreach: no first
+   * emails, follow-ups, lead-in-hand offers or operator emails. Discovery, email finding and reply/bounce reading
+   * still run. Set it back to false only on his word, with new approved texts.
+   */
+  paused: true,
   /** Countries where emailing a business address published on its own website is lawful without prior consent. */
   defaultCountries: ["US", "JP"],
   /**

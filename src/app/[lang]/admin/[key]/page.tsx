@@ -74,7 +74,7 @@ export default async function Admin({ params, searchParams }: PageProps<"/[lang]
           </div>
           <p className="mt-4 text-[14.5px] text-mute">
             Payments: {paymentsOn() ? "on" : `off (prices approved: ${PRICING.approved ? "yes" : "no"}, Stripe: ${process.env.STRIPE_SECRET_KEY ? "yes" : "no"})`}. Outreach sending:{" "}
-            {cfg.sending ? "on" : `off (OUTREACH_LIVE ${cfg.live ? "on" : "off"}, SMTP ${cfg.smtp ? "set" : "missing"}, postal address ${cfg.address ? "set" : "missing"})`}. Replies read: {cfg.imap ? "yes" : "no (no follow-ups)"}.
+            {cfg.sending ? "on" : cfg.paused ? "PAUSED in config.ts (Samuel, 16 Nov 2026: no more lead pitches)" : `off (OUTREACH_LIVE ${cfg.live ? "on" : "off"}, SMTP ${cfg.smtp ? "set" : "missing"}, postal address ${cfg.address ? "set" : "missing"})`}. Replies read: {cfg.imap ? "yes" : "no (no follow-ups)"}.
             Lead in hand: {cfg.leadOffers ? "on" : "off (waits for Samuel's OK, then OUTREACH_LEAD_OFFERS=on)"}. Operators:{" "}
             {cfg.operators ? "on" : "no email until Samuel approves their text (then OUTREACH_OPERATORS=on)"}. Countries: {cfg.countries.join(", ")}.
           </p>
