@@ -3,7 +3,7 @@ import { clicksByEmployer } from "@/lib/clicks";
 import { hasDatabase } from "@/lib/db";
 import { mailConfigured, trySendMail } from "@/lib/mail";
 import { dailyMarket, marketStats } from "@/lib/market";
-import { dailyOutreach, outreachConfig, outreachStats } from "@/lib/outreach";
+import { outreachConfig, outreachStats } from "@/lib/outreach";
 
 export const maxDuration = 300;
 
@@ -19,8 +19,9 @@ const flags = () => ({
 
 /**
  * The daily run (vercel.json cron): jobs end, job alerts go out, open projects go to companies, missed payments
- * are recovered, outreach runs, and one summary email reaches the inbox. Vercel calls it with CRON_SECRET;
- * anyone else only sees which parts are switched on.
+ * are recovered, and one summary email reaches the inbox. Cold email is NOT part of it (Samuel, 16 November 2026):
+ * it lives in /api/cron/outreach, which is not scheduled. Vercel calls this with CRON_SECRET; anyone else only sees
+ * which parts are switched on.
  */
 export async function GET(request: Request) {
   const secret = process.env.CRON_SECRET;
@@ -28,7 +29,7 @@ export async function GET(request: Request) {
   if (!authorized || !hasDatabase()) return Response.json(flags());
 
   const market = await dailyMarket().catch((error) => ({ error: error instanceof Error ? error.message : "unknown" }));
-  const outreach = await dailyOutreach().catch((error) => ({ error: error instanceof Error ? error.message : "unknown" }));
+  const outreach = "not in the daily run (separate /api/cron/outreach, not scheduled)";
   const stats = await marketStats().catch(() => null);
   const prospects = await outreachStats().catch(() => ({}));
   const employers = await clicksByEmployer(30, 10).catch(() => []);
