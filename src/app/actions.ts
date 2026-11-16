@@ -142,6 +142,52 @@ export async function adminAddCandidateAction(form: FormData) {
   back("Added at Qualification Pending.");
 }
 
+/**
+ * A buyer Samuel found himself (a call, an email reply, an event), typed in at New Lead so outbound work has the same
+ * pipeline (16 Nov 2026). Nobody is emailed: not the buyer (they never filled the form) and not the inbox (Samuel
+ * typed it). Technician placement is for US hires only; a Japan buyer goes in as a commercial project.
+ */
+export async function adminAddLeadAction(form: FormData) {
+  if (!adminOk(form)) redirect("/");
+  const key = read(form, "key", 100);
+  const back = (msg: string, id?: string) => redirect(`/admin/${key}?msg=${encodeURIComponent(msg)}#${id ? `lead-${id}` : "pipeline"}`);
+  const { addEvent, createInquiry } = await import("@/lib/pipeline");
+  const { SOURCING_TRADES } = await import("@/lib/config");
+  const kind = read(form, "kind", 20);
+  const email = read(form, "email", 120).toLowerCase();
+  const trade = read(form, "trade", 20);
+  const country = read(form, "country", 2).toUpperCase();
+  const due = read(form, "followup", 10);
+  if (kind !== "talent_request" && kind !== "project") back("Not added: choose Technician request or Commercial project.");
+  if (!read(form, "company", 120) || !read(form, "name", 100) || !(SOURCING_TRADES as readonly string[]).includes(trade)) back("Not added: company, contact name and a trade are needed.");
+  if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) back("Not added: the email is not valid.");
+  if (country !== "US" && country !== "JP") back("Not added: the country is US or JP.");
+  if (kind === "talent_request" && country !== "US") back("Not added: technician placement is for US hires only; enter a Japan buyer as a commercial project.");
+  if (due && !/^\d{4}-\d{2}-\d{2}$/.test(due)) back("Not added: the follow-up date is not a date.");
+  const id = await createInquiry({
+    kind: kind as "talent_request" | "project",
+    source: "outbound",
+    stage: "received",
+    acknowledge: false,
+    notify: false,
+    name: read(form, "name", 100),
+    email,
+    phone: read(form, "phone", 40),
+    company: read(form, "company", 120),
+    country,
+    place: read(form, "place", 120),
+    trades: [trade],
+    lang: country === "JP" ? "ja" : "en",
+    data: {
+      "Contact role": read(form, "role", 100),
+      "Found via": read(form, "found", 300),
+      "What they told us": read(form, "need", 600),
+    },
+  });
+  if (due) await addEvent(id, { kind: "followup", text: read(form, "next", 300) || "First contact", due, owner: read(form, "owner", 60), amount: null });
+  back("Added at New Lead. Nobody was emailed.", id);
+}
+
 /** The sales activity log (16 Nov 2026): a call, email, meeting, note, follow-up (with a due date and owner) or proposal. */
 export async function adminEventAction(form: FormData) {
   if (!adminOk(form)) redirect("/");

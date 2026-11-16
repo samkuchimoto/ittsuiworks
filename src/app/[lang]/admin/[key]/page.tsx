@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { connection } from "next/server";
-import { adminAddCandidateAction, adminCloseJobAction, adminEventAction, adminEventDoneAction, adminStageAction, importProspectsAction } from "@/app/actions";
+import { adminAddCandidateAction, adminAddLeadAction, adminCloseJobAction, adminEventAction, adminEventDoneAction, adminStageAction, importProspectsAction } from "@/app/actions";
 import { Card, Shell } from "@/components/Shell";
 import { getDictionary } from "@/content";
 import { clicksByEmployer } from "@/lib/clicks";
@@ -90,7 +90,7 @@ export default async function Admin({ params, searchParams }: PageProps<"/[lang]
           <div id="pipeline" className="scroll-mt-24" />
           <h2 className="text-[20px] font-bold text-navy">Sales and sourcing pipeline</h2>
           <p className="mt-2 text-[14.5px] text-mute">
-            Every request, project and application from the site, plus Indeed candidates you add below. Buyers move New Lead, Contacted, Qualified, Proposal, Provider Matching, Agreement, In Progress, Completed, Repeat Customer; Agreement and later need the signed agreement ticked (and, for a project, the partner&apos;s license and insurance). Applicants move Application Received, Qualification Pending, Verification In Progress, Verified, Available for Matching; Verified and Available need the checks ticked. Nobody is introduced and nothing is charged from here.
+            Every request, project and application from the site, plus buyers you found yourself and Indeed candidates, both added below. Buyers move New Lead, Contacted, Qualified, Proposal, Provider Matching, Agreement, In Progress, Completed, Repeat Customer; Agreement and later need the signed agreement ticked (and, for a project, the partner&apos;s license and insurance). Applicants move Application Received, Qualification Pending, Verification In Progress, Verified, Available for Matching; Verified and Available need the checks ticked. Nobody is introduced and nothing is charged from here.
           </p>
           {msg && <p className={`mt-4 ${box}`}>{msg}</p>}
 
@@ -145,9 +145,13 @@ export default async function Admin({ params, searchParams }: PageProps<"/[lang]
                           <span className="text-[12.5px] font-bold uppercase tracking-[0.1em] text-orange">{labelFor(kind, r.stage)}</span>
                         </p>
                         <p className="mt-1 text-mute">
-                          <a href={`mailto:${r.email}`} className="underline">
-                            {r.email}
-                          </a>
+                          {r.email ? (
+                            <a href={`mailto:${r.email}`} className="underline">
+                              {r.email}
+                            </a>
+                          ) : (
+                            "no email"
+                          )}
                           {r.phone ? ` · ${r.phone}` : ""} · {r.place}, {r.country} · {r.trades.join(", ")} · {r.source} · {new Date(r.created_at).toISOString().slice(0, 10)}
                         </p>
                         <dl className="mt-2 grid gap-x-4 gap-y-1 sm:grid-cols-[220px_1fr]">
@@ -227,6 +231,43 @@ export default async function Admin({ params, searchParams }: PageProps<"/[lang]
               </div>
             );
           })}
+
+          <form action={adminAddLeadAction} className="mt-10 grid gap-3 rounded-xl bg-mist p-5 sm:grid-cols-2">
+            <input type="hidden" name="key" value={key} />
+            <p className="text-[15px] font-bold text-navy sm:col-span-2">Add a buyer you found yourself: a call, an email reply, an event (lands at New Lead; nobody is emailed)</p>
+            <select name="kind" required defaultValue="talent_request" className="field" aria-label="Kind">
+              <option value="talent_request">Technician request (US hires only)</option>
+              <option value="project">Commercial project (US or Japan)</option>
+            </select>
+            <select name="trade" required defaultValue="" className="field" aria-label="Trade">
+              <option value="" disabled>
+                Trade
+              </option>
+              {SOURCING_TRADES.map((k) => (
+                <option key={k} value={k}>
+                  {k}
+                </option>
+              ))}
+            </select>
+            <input name="company" required maxLength={120} placeholder="Company" className="field" />
+            <input name="name" required maxLength={100} placeholder="Contact name" className="field" />
+            <input name="role" maxLength={100} placeholder="Their role (e.g. Facilities manager)" className="field" />
+            <input name="email" type="email" maxLength={120} placeholder="Business email (if given)" className="field" />
+            <input name="phone" maxLength={40} placeholder="Business phone" className="field" />
+            <input name="place" maxLength={120} placeholder="Site city, state (e.g. Houston, TX)" className="field" />
+            <select name="country" defaultValue="US" className="field" aria-label="Country">
+              <option value="US">United States</option>
+              <option value="JP">Japan (projects only)</option>
+            </select>
+            <input name="found" maxLength={300} placeholder="Found via (e.g. careers page: 6 technician roles in Houston)" className="field" />
+            <input name="need" maxLength={600} placeholder="What they told us they need" className="field sm:col-span-2" />
+            <label className="flex items-center gap-2 text-[14px]">
+              First follow-up <input name="followup" type="date" className="field w-auto py-2" />
+            </label>
+            <input name="next" maxLength={300} placeholder="Follow-up: what to do" className="field" />
+            <input name="owner" maxLength={60} placeholder="Owner" className="field" />
+            <button className="rounded-md bg-navy px-5 py-3 text-[15px] font-semibold text-white sm:col-span-2 sm:justify-self-start">Add at New Lead</button>
+          </form>
 
           <form action={adminAddCandidateAction} className="mt-10 grid gap-3 rounded-xl bg-sky p-5 sm:grid-cols-2">
             <input type="hidden" name="key" value={key} />

@@ -124,6 +124,8 @@ export type NewInquiry = Pick<Inquiry, "kind" | "name" | "email" | "phone" | "co
   stage?: string;
   /** False for Indeed candidates typed in by Samuel: they get no email from the site. */
   acknowledge?: boolean;
+  /** False for a buyer Samuel types in himself (an outbound lead): no inbox email either. */
+  notify?: boolean;
 };
 
 export type Upload = { name: string; type: string; bytes: Buffer };
@@ -160,7 +162,7 @@ export async function createInquiry(input: NewInquiry, files: Upload[] = []): Pr
   }
   const who = input.company ? `${input.company} (${input.name})` : input.name;
   const where = [input.place, countryName(input.country)].filter(Boolean).join(", ");
-  await trySendMail({
+  if (input.notify !== false) await trySendMail({
     subject: `${SUBJECT[input.kind]}: ${who}, ${input.trades.join("/")}, ${where}`.slice(0, 180),
     replyTo: input.email,
     lines: [
