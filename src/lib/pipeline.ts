@@ -1,39 +1,63 @@
 /**
  * The sourcing pipeline (Samuel, 16 November 2026). Every request, project and application lands here and in the
- * inbox. Nothing is charged and nobody is introduced automatically: a person confirms the agreement, the state license
- * and the insurance before any engagement, and presents a technician only after verification and with consent.
+ * inbox, and the sender gets an acknowledgment with a private link to see it again (/inquiry/<token>). Nothing is
+ * charged and nobody is introduced automatically: a person confirms the agreement, the state license and the
+ * insurance before any engagement, and presents a technician only after verification and with consent.
  *
- * People (technician, partner):  received -> qualified (stage 1) -> verified (stage 2), or declined.
- *   Stage 1 "Qualified, verification pending": answered the qualification questions and gave consent.
- *   Stage 2 "Verified, ready to pitch": license number, identity and work history checked by a person.
- * Clients (talent_request, project): received -> review -> engaged, or closed.
- *   "Engaged" only once a written agreement is signed (and, for a project, the partner's license and insurance checked).
+ * People (technician, partner), Samuel's statuses: Application Received -> Qualification Pending -> Verification In
+ * Progress -> Verified -> Available for Matching (or Declined). Answering questions never makes anyone verified:
+ * "Verified" and "Available for Matching" need the checks ticked by a person.
+ * Clients (talent_request, project), the sales pipeline: New Lead -> Contacted -> Qualified -> Proposal -> Provider
+ * Matching -> Agreement -> In Progress -> Completed -> Repeat Customer (or Lost). Agreement and every later stage need
+ * the signed agreement (and, for a project, the partner's license and insurance) ticked.
  */
 import "server-only";
+import { fill, getDictionary } from "@/content";
 import { countryName } from "./countries";
-import { newId, query } from "./db";
+import { newId, newToken, query } from "./db";
 import { trySendMail } from "./mail";
+import { SITE_URL, pathFor, type Locale } from "./site";
 
 export const KINDS = ["talent_request", "project", "technician", "partner"] as const;
 export type Kind = (typeof KINDS)[number];
 export const isKind = (v: string): v is Kind => (KINDS as readonly string[]).includes(v);
+export const isClient = (kind: Kind) => kind === "talent_request" || kind === "project";
 
+const PEOPLE_STAGES = ["received", "qualified", "verifying", "verified", "available", "declined"] as const;
+const CLIENT_STAGES = ["received", "contacted", "qualifying", "proposal", "matching", "agreement", "in_progress", "completed", "repeat", "lost"] as const;
 export const STAGES: Record<Kind, readonly string[]> = {
-  technician: ["received", "qualified", "verified", "declined"],
-  partner: ["received", "qualified", "verified", "declined"],
-  talent_request: ["received", "review", "engaged", "closed"],
-  project: ["received", "review", "engaged", "closed"],
+  technician: PEOPLE_STAGES,
+  partner: PEOPLE_STAGES,
+  talent_request: CLIENT_STAGES,
+  project: CLIENT_STAGES,
 };
 
-export const STAGE_LABEL: Record<string, string> = {
-  received: "Received, not screened",
-  qualified: "Stage 1 · Qualified, verification pending",
-  verified: "Stage 2 · Verified and ready to pitch",
+const PEOPLE_LABEL: Record<string, string> = {
+  received: "Application Received",
+  qualified: "Qualification Pending",
+  verifying: "Verification In Progress",
+  verified: "Verified",
+  available: "Available for Matching",
   declined: "Declined",
-  review: "In review (agreement and checks pending)",
-  engaged: "Engaged (agreement signed, checks confirmed)",
-  closed: "Closed",
 };
+const CLIENT_LABEL: Record<string, string> = {
+  received: "New Lead",
+  contacted: "Contacted",
+  qualifying: "Qualified",
+  proposal: "Proposal",
+  matching: "Provider Matching",
+  agreement: "Agreement",
+  in_progress: "In Progress",
+  completed: "Completed",
+  repeat: "Repeat Customer",
+  lost: "Lost / closed",
+  // Rows saved before the sales pipeline (16 Nov 2026, morning release) keep a readable name.
+  review: "Contacted (earlier stage)",
+  engaged: "Agreement (earlier stage)",
+  closed: "Closed (earlier stage)",
+};
+/** The admin's name for a stage of this kind. */
+export const labelFor = (kind: Kind, stage: string) => (isClient(kind) ? CLIENT_LABEL : PEOPLE_LABEL)[stage] ?? stage;
 
 export const KIND_LABEL: Record<Kind, string> = {
   talent_request: "Technician requests (employers)",
@@ -42,27 +66,32 @@ export const KIND_LABEL: Record<Kind, string> = {
   partner: "Trade partner applications",
 };
 
-/** What a person must confirm before each stage. The admin form shows one box per check. */
-export const CHECKS: Record<string, { key: string; label: string }[]> = {
-  "technician:verified": [
+/** What a person must confirm, per kind. The admin form shows one box per check. */
+export const CHECKS: Record<Kind, { key: string; label: string }[]> = {
+  technician: [
     { key: "license", label: "License or certification number checked on the issuing authority's public lookup (TDLR, DBPR, EPA 608 card...)" },
     { key: "identity", label: "Identity checked (name matches the license and an ID)" },
     { key: "history", label: "Work history checked (a past employer or client confirmed)" },
   ],
-  "partner:verified": [
+  partner: [
     { key: "license", label: "State contractor license checked on the state's public lookup, active, right trade" },
     { key: "insurance", label: "Certificates of liability and workers' comp insurance seen, in date" },
   ],
-  "talent_request:engaged": [{ key: "agreement", label: "Written placement agreement signed (fee, guarantee, payment terms)" }],
-  "project:engaged": [
+  talent_request: [{ key: "agreement", label: "Written placement agreement signed (fee, guarantee, payment terms)" }],
+  project: [
     { key: "agreement", label: "Written referral agreement signed with the licensed contractor" },
     { key: "license", label: "The contractor's state license checked for this trade and place" },
     { key: "insurance", label: "The contractor's liability and workers' comp certificates seen" },
   ],
 };
-
-/** The consent a technician gives on the site (Samuel's words), stored with the application. */
-export const TECH_CONSENT_EN = "I consent to Ittsui Works storing my application and presenting my profile to hiring employers and commercial contractors upon qualification.";
+/** The checks a stage needs: Verified and later for people, Agreement and later for clients (Lost needs none). */
+export function gateFor(kind: Kind, stage: string): { key: string; label: string }[] {
+  if (isClient(kind)) {
+    const order = CLIENT_STAGES as readonly string[];
+    return stage !== "lost" && order.indexOf(stage) >= order.indexOf("agreement") ? CHECKS[kind] : [];
+  }
+  return stage === "verified" || stage === "available" ? CHECKS[kind] : [];
+}
 
 export type Inquiry = {
   id: string;
@@ -84,6 +113,7 @@ export type Inquiry = {
   checks: Record<string, string>;
   notes: string;
   lang: string;
+  token: string | null;
   files?: { id: string; name: string; size: number }[];
 };
 
@@ -92,6 +122,8 @@ export type NewInquiry = Pick<Inquiry, "kind" | "name" | "email" | "phone" | "co
   consentText?: string;
   consentAt?: Date;
   stage?: string;
+  /** False for Indeed candidates typed in by Samuel: they get no email from the site. */
+  acknowledge?: boolean;
 };
 
 export type Upload = { name: string; type: string; bytes: Buffer };
@@ -104,22 +136,26 @@ const SUBJECT: Record<Kind, string> = {
 };
 
 const NEXT_STEP: Record<Kind, string> = {
-  talent_request: "Next: reply to agree the role and the fee in writing. No technician is introduced before a signed agreement.",
+  talent_request: "Next: contact them, agree the role and the fee in writing. No technician is introduced before a signed agreement.",
   project: "Next: confirm scope and size, then match a licensed partner. Agreement, license and insurance checks before any introduction.",
-  technician: "Next: screen (stage 1), then verify license, identity and work history (stage 2) before presenting the profile.",
+  technician: "Next: review the answers (Qualification Pending), then verify license, identity and work history before presenting the profile.",
   partner: "Next: check the state license and the insurance certificates before sending any project.",
 };
 
-/** Stores a submission (and its file), then tells the inbox. Returns the new id. */
-export async function createInquiry(input: NewInquiry, file?: Upload | null): Promise<string> {
+/** The private page where the sender sees their request or application again. */
+export const inquiryLink = (lang: string, token: string) => `${SITE_URL}${pathFor(lang === "ja" ? "ja" : "en", `/inquiry/${token}`)}`;
+
+/** Stores a submission (and its files), tells the inbox and acknowledges the sender. Returns the new id. */
+export async function createInquiry(input: NewInquiry, files: Upload[] = []): Promise<string> {
   const id = newId();
+  const token = newToken();
   const consentAt = input.consentText ? (input.consentAt ?? new Date()) : null;
   await query(
-    `INSERT INTO inquiries (id, kind, source, name, email, phone, company, country, place, trades, data, consent_at, consent_text, stage, lang)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)`,
-    [id, input.kind, input.source ?? "site", input.name, input.email, input.phone, input.company, input.country, input.place, input.trades, JSON.stringify(input.data), consentAt, input.consentText ?? "", input.stage ?? "received", input.lang],
+    `INSERT INTO inquiries (id, kind, source, name, email, phone, company, country, place, trades, data, consent_at, consent_text, stage, lang, token)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)`,
+    [id, input.kind, input.source ?? "site", input.name, input.email, input.phone, input.company, input.country, input.place, input.trades, JSON.stringify(input.data), consentAt, input.consentText ?? "", input.stage ?? "received", input.lang, token],
   );
-  if (file) {
+  for (const file of files) {
     await query(`INSERT INTO inquiry_files (id, inquiry_id, name, type, size, data) VALUES ($1, $2, $3, $4, $5, $6)`, [newId(), id, file.name.slice(0, 120), file.type, file.bytes.length, file.bytes]);
   }
   const who = input.company ? `${input.company} (${input.name})` : input.name;
@@ -129,7 +165,7 @@ export async function createInquiry(input: NewInquiry, file?: Upload | null): Pr
     replyTo: input.email,
     lines: [
       ...[
-        `${SUBJECT[input.kind]} (${input.source ?? "site"}, ${input.lang})`,
+        `${SUBJECT[input.kind]} (${input.source ?? "site"}, ${input.lang}), reference ${id.toUpperCase()}`,
         `Name: ${input.name}`,
         input.company ? `Company: ${input.company}` : "",
         `Email: ${input.email}`,
@@ -137,7 +173,7 @@ export async function createInquiry(input: NewInquiry, file?: Upload | null): Pr
         `Place: ${where}`,
         `Trades: ${input.trades.join(", ")}`,
         ...Object.entries(input.data).map(([k, v]) => `${k}: ${v || "not given"}`),
-        file ? `File: ${file.name} (${Math.round(file.bytes.length / 1024)} KB), on the admin page` : "",
+        ...files.map((file) => `File: ${file.name} (${Math.round(file.bytes.length / 1024)} KB), on the admin page`),
         input.consentText ? `Consent: "${input.consentText}" (${(consentAt ?? new Date()).toISOString()})` : "",
       ].filter(Boolean),
       "",
@@ -145,7 +181,26 @@ export async function createInquiry(input: NewInquiry, file?: Upload | null): Pr
       "Reply to this email to answer them directly.",
     ],
   });
+  // The sender's acknowledgment (Samuel, 16 Nov 2026): what we received and a private link to see it again.
+  if (input.acknowledge !== false) {
+    const lang: Locale = input.lang === "ja" ? "ja" : "en";
+    const a = getDictionary(lang).mail.inquiryAck;
+    await trySendMail({
+      to: input.email,
+      subject: fill(a.subject[input.kind], { reference: id.toUpperCase() }),
+      lines: a.lines.map((line) => fill(line, { name: input.name, reference: id.toUpperCase(), link: inquiryLink(lang, token) })),
+    });
+  }
   return id;
+}
+
+export async function getInquiryByToken(token: string): Promise<Inquiry | null> {
+  const [row] = await query<Inquiry>(
+    `SELECT i.*, COALESCE((SELECT json_agg(json_build_object('id', f.id, 'name', f.name, 'size', f.size)) FROM inquiry_files f WHERE f.inquiry_id = i.id), '[]') AS files
+     FROM inquiries i WHERE i.token = $1`,
+    [token],
+  );
+  return row && isKind(row.kind) ? row : null;
 }
 
 export async function listInquiries(): Promise<Record<Kind, Inquiry[]>> {
@@ -166,16 +221,72 @@ export async function setStage(id: string, stage: string, ticked: string[], note
   const [row] = await query<Inquiry>(`SELECT * FROM inquiries WHERE id = $1`, [id]);
   if (!row || !isKind(row.kind)) return "Not found.";
   if (!STAGES[row.kind].includes(stage)) return `A ${row.kind} has no stage "${stage}".`;
-  if (row.kind === "technician" && (stage === "qualified" || stage === "verified") && !row.consent_at) return "No consent on record: ask the qualification and consent questions first.";
-  const needed = CHECKS[`${row.kind}:${stage}`] ?? [];
+  if (row.kind === "technician" && stage !== "received" && stage !== "declined" && !row.consent_at) return "No consent on record: ask the qualification and consent questions first.";
+  const needed = gateFor(row.kind, stage);
   const checks = { ...row.checks };
   const day = new Date().toISOString().slice(0, 10);
   for (const c of needed) if (ticked.includes(c.key) && !checks[c.key]) checks[c.key] = `${day}${note ? `: ${note}` : ""}`;
   const missing = needed.filter((c) => !checks[c.key]);
   if (missing.length) return `Tick every check first: ${missing.map((c) => c.key).join(", ")}.`;
-  const notes = note ? `${row.notes ? `${row.notes}\n` : ""}${day} ${stage}: ${note}`.slice(-4000) : row.notes;
-  await query(`UPDATE inquiries SET stage = $2, stage_at = now(), checks = $3, notes = $4 WHERE id = $1`, [id, stage, JSON.stringify(checks), notes]);
+  await query(`UPDATE inquiries SET stage = $2, stage_at = now(), checks = $3 WHERE id = $1`, [id, stage, JSON.stringify(checks)]);
+  await addEvent(id, { kind: "stage", text: `${labelFor(row.kind, row.stage)} -> ${labelFor(row.kind, stage)}${note ? `: ${note}` : ""}` });
   return null;
+}
+
+// ------------------------------------------------------------------ activity: contacts, follow-ups, proposals
+
+export const EVENT_KINDS = ["call", "email", "meeting", "note", "followup", "proposal"] as const;
+export type EventKind = (typeof EVENT_KINDS)[number] | "stage";
+export type InquiryEvent = {
+  id: string;
+  inquiry_id: string;
+  at: Date;
+  kind: EventKind;
+  text: string;
+  due: string | null;
+  owner: string;
+  amount: string | null;
+  done: boolean;
+};
+
+export async function addEvent(
+  inquiryId: string,
+  e: { kind: EventKind; text: string; due?: string | null; owner?: string; amount?: number | null },
+): Promise<void> {
+  await query(`INSERT INTO inquiry_events (id, inquiry_id, kind, text, due, owner, amount) VALUES ($1, $2, $3, $4, $5, $6, $7)`, [
+    newId(),
+    inquiryId,
+    e.kind,
+    e.text.slice(0, 2000),
+    e.due || null,
+    (e.owner ?? "").slice(0, 60),
+    e.amount ?? null,
+  ]);
+}
+
+export async function eventsFor(ids: string[]): Promise<Record<string, InquiryEvent[]>> {
+  if (!ids.length) return {};
+  const rows = await query<InquiryEvent>(
+    `SELECT id, inquiry_id, at, kind, text, to_char(due, 'YYYY-MM-DD') AS due, owner, amount::text AS amount, done FROM inquiry_events WHERE inquiry_id = ANY($1) ORDER BY at DESC`,
+    [ids],
+  );
+  const out: Record<string, InquiryEvent[]> = {};
+  for (const r of rows) (out[r.inquiry_id] ??= []).push(r);
+  return out;
+}
+
+/** Open follow-ups, soonest first, with the company or person they are about. */
+export async function openFollowups(): Promise<(InquiryEvent & { who: string; kind_of: Kind })[]> {
+  return query(
+    `SELECT e.id, e.inquiry_id, e.at, e.kind, e.text, to_char(e.due, 'YYYY-MM-DD') AS due, e.owner, e.amount::text AS amount, e.done,
+            COALESCE(NULLIF(i.company, ''), i.name) AS who, i.kind AS kind_of
+     FROM inquiry_events e JOIN inquiries i ON i.id = e.inquiry_id
+     WHERE e.kind = 'followup' AND NOT e.done ORDER BY e.due NULLS LAST, e.at LIMIT 100`,
+  );
+}
+
+export async function completeEvent(id: string): Promise<void> {
+  await query(`UPDATE inquiry_events SET done = true WHERE id = $1`, [id]);
 }
 
 export async function getFile(id: string): Promise<{ name: string; type: string; data: Buffer } | null> {

@@ -3,9 +3,9 @@ import type { Dict } from "./en";
 /** 日本語のコピー。英語版（en.ts）と同じ構成です。 */
 export const ja: Dict = {
   meta: {
-    title: "一対ワークス（Ittsui Works）｜重要インフラのための業務用技術者と有資格の協力会社",
+    title: "一対ワークス（Ittsui Works）｜専門技術人材と協力会社の手配",
     description:
-      "日米のデータセンター事業者、設備工事会社（MEP）、産業施設向けに、空調技術者、業務用電気工事士、有資格の協力会社をおつなぎする、米国での技術者の人材紹介と、協力会社の手配サービスです。",
+      "日米のデータセンター事業者、設備工事会社（MEP）、産業施設向けに、空調技術者、業務用電気工事士、専門の協力会社をおつなぎする、米国での技術者の人材紹介と、協力会社の手配サービスです。",
     privacyTitle: "プライバシーポリシー｜一対ワークス",
     termsTitle: "利用規約｜一対ワークス",
     jobsTitle: "空調・データセンター・船舶の技術者求人｜一対ワークス",
@@ -19,6 +19,7 @@ export const ja: Dict = {
     joinTitle: "技術者・協力会社として登録する｜一対ワークス",
     joinDescription: "無料。空調、電気、データセンター、船舶の技術者と、業務用の下請工事を受ける有資格の施工会社のための登録です。",
     accountTitle: "アカウント｜一対ワークス",
+    inquiryTitle: "ご依頼の確認｜一対ワークス",
   },
   header: {
     positioning: "重要インフラのための、米国での技術者の人材紹介と、協力会社の手配。",
@@ -39,10 +40,11 @@ export const ja: Dict = {
   ],
   hero: {
     kicker: "AIの時代も、つくるのは人の手。",
-    title: ["業務用の技術者と、有資格の協力会社を。", "重要インフラのために、お探しします。"],
-    lead: "日米のデータセンター事業者、設備工事会社（MEP）、産業施設と、資格を持つ空調技術者、業務用電気工事士、有資格の協力会社をおつなぎします。",
+    title: ["専門技術人材と", "協力会社の手配。"],
+    lead: "産業施設、重要インフラ、業務用プロジェクトのために、空調技術者、業務用電気工事士、専門の施工会社とおつなぎします。",
     primary: "技術者を依頼する",
     secondary: "業務用の案件を依頼する",
+    talent: "技術人材を探す",
     joinLink: "技術者・協力会社として登録する",
     images: [
       { name: "hero-jp-1", alt: "東京駅を望む屋上で、空調設備を点検する技術者" },
@@ -79,7 +81,7 @@ export const ja: Dict = {
     items: [
       {
         title: "データベースではなく、人が探す",
-        text: "すべてのご依頼を人が担当します。職種、現場、必要な資格に合わせて、技術者と有資格の協力会社を探し、選考し、おつなぎします。",
+        text: "すべてのご依頼を人が担当します。職種、現場、必要な資格に合わせて、技術者と協力会社を探し、選考し、おつなぎします。",
       },
       {
         title: "ご紹介の前に確認する",
@@ -90,7 +92,7 @@ export const ja: Dict = {
         text: "新しいデータセンターや半導体工場は、電力と冷却を待っています。どちらも、業務用の電気工事士と冷却の技術者が設置します。私たちが探すのは、まさにその職種です。",
       },
       {
-        title: "協力会社は有資格の会社だけ",
+        title: "ご紹介の前に許可を確認",
         text: "業務用の案件は、その工事に必要な許可を持ち、賠償責任保険と労災保険に加入している施工会社にだけお届けします。ご紹介の前に確認します。",
       },
     ],
@@ -115,7 +117,7 @@ export const ja: Dict = {
       tag: "施設オーナー・ゼネコンの方へ",
       steps: [
         { title: "工事の内容を伝える", text: "施設、職種、工事内容、規模、着工時期。そして電力、予算、日程の3つの質問。" },
-        { title: "有資格の協力会社をご紹介", text: "その工事の許可を持つ地域の施工会社を、許可と保険を先に確認してご紹介します。" },
+        { title: "協力会社をご紹介", text: "その工事の許可を持つ地域の施工会社を、許可と保険を先に確認してご紹介します。" },
         { title: "直接ご契約", text: "有資格の施工会社が御社と契約し、工事を行います。一対ワークスはその契約の当事者ではありません。" },
       ],
       cta: "業務用の案件を依頼する",
@@ -135,6 +137,8 @@ export const ja: Dict = {
     recruit: "対象の技術者",
     certs: "主な資格",
     jobs: "求人を見る",
+    request: "技術者を依頼する",
+    requestElectricians: "電気工事士を依頼する",
     items: [
       {
         id: "hvac",
@@ -209,7 +213,7 @@ export const ja: Dict = {
     items: [
       {
         q: "一対ワークスは何をしていますか？",
-        a: "重要インフラのための、米国での技術者の人材紹介と、協力会社の手配です。日米のデータセンター事業者、設備工事会社、産業施設と、空調技術者、業務用電気工事士、有資格の施工会社をおつなぎします。",
+        a: "重要インフラのための、米国での技術者の人材紹介と、協力会社の手配です。日米のデータセンター事業者、設備工事会社、産業施設と、空調技術者、業務用電気工事士、専門の施工会社をおつなぎします。",
       },
       { q: "対応している職種は？", a: "業務用空調、業務用・産業用の電気、データセンターのファシリティ、船舶です。" },
       {
@@ -262,6 +266,7 @@ export const ja: Dict = {
     sourcingTrades: { hvac: "業務用空調", electrical: "業務用電気", datacenter: "データセンター", marine: "船舶" },
     projectSizes: { "10k50k": "1万〜5万米ドル", "50k250k": "5万〜25万米ドル", "250k": "25万米ドル以上", unknown: "未定" },
     engagements: { direct_hire: "直接雇用", contract: "契約", contract_to_hire: "紹介予定の契約" },
+    durations: { under1m: "1か月未満", "1to3m": "1〜3か月", "3to6m": "3〜6か月", "6to12m": "6〜12か月", ongoing: "無期限・継続" },
     facilities: { datacenter: "データセンター", industrial: "産業施設", commercial: "業務用ビル", marine: "船舶・港湾", other: "その他" },
     yearsSuffix: "年",
     people: "名",
@@ -360,7 +365,7 @@ export const ja: Dict = {
     details: "工事の範囲とご依頼者",
     submit: "案件を依頼する",
     sentTitle: "案件を受け付けました",
-    sent: "担当者が拝読します。返信は contact@ittsuiworks.com からお送りします。",
+    sent: "担当者が拝読します。ご依頼の確認ページへの専用リンクを記載した確認メールをお送りしました。返信は contact@ittsuiworks.com からお送りします。",
   },
   request: {
     label: "技術者の人材紹介（米国での採用）",
@@ -377,7 +382,7 @@ export const ja: Dict = {
     details: "詳細と御社について",
     submit: "技術者を依頼する",
     sentTitle: "ご依頼を受け付けました",
-    sent: "担当者が拝読します。返信は contact@ittsuiworks.com からお送りします。",
+    sent: "担当者が拝読します。ご依頼の確認ページへの専用リンクを記載した確認メールをお送りしました。返信は contact@ittsuiworks.com からお送りします。",
   },
   join: {
     label: "ネットワークに登録",
@@ -391,7 +396,7 @@ export const ja: Dict = {
       consentProfile: "一対ワークスが私の登録内容を保存し、選考を通過した場合に、採用企業および業務用工事の施工会社に私のプロフィールを紹介することに同意します。",
       submit: "登録内容を送信する",
       sentTitle: "ご登録を受け付けました",
-      sent: "担当者が拝読します。ご経歴に合う職務がある場合は、プロフィールをご紹介する前にご連絡します。",
+      sent: "担当者が拝読します。ご登録の確認ページへの専用リンクを記載した確認メールをお送りしました。ご経歴に合う職務がある場合は、プロフィールをご紹介する前にご連絡します。",
       japan: "技術者の登録は米国で受け付けています。日本の求人へは、各求人に記載された企業の応募方法でご応募ください。",
     },
     partner: {
@@ -400,7 +405,7 @@ export const ja: Dict = {
       text: "業務用の下請工事を受ける、有資格の電気、空調、設備の施工会社の方へ。案件をお届けする前に、州の許可と保険を確認します。",
       submit: "協力会社として登録する",
       sentTitle: "ご登録を受け付けました",
-      sent: "担当者が拝読し、案件をお届けする前に許可と保険を確認します。",
+      sent: "担当者が拝読し、案件をお届けする前に許可と保険を確認します。ご登録の確認ページへの専用リンクを記載した確認メールをお送りしました。",
     },
   },
   companies: {
@@ -579,6 +584,13 @@ export const ja: Dict = {
     pay: "給与の範囲（任意）",
     payHint: "例：時給38〜45米ドル",
     facility: "施設",
+    duration: "期間",
+    qualifications: "必要な資格（任意）",
+    qualificationsHint: "例：州の電気工事ライセンス、NFPA 70E、OSHA 30",
+    documents: "関連資料（任意）",
+    documentsHint: "工事範囲、図面、RFPなど。PDF、画像、Word。3ファイル・合計4MBまで。",
+    insuranceDetails: "保険の詳細（任意）",
+    insuranceDetailsHint: "保険会社、証券番号、有効期限",
     size: "案件の規模",
     sending: "送信中",
     failed: "送信できませんでした。もう一度お試しいただくか、contact@ittsuiworks.com までご連絡ください。",
@@ -586,7 +598,54 @@ export const ja: Dict = {
     busy: "送信回数が上限に達しました。数分おいてからお試しください。",
     duplicate: "この求人には、すでに応募済みです。",
   },
+  inquiryPage: {
+    title: { talent_request: "技術者のご依頼", project: "業務用の案件", technician: "ご登録内容", partner: "協力会社のご登録内容" },
+    reference: "受付番号 {reference}",
+    sent: "送信日 {date}",
+    status: "状況",
+    statuses: {
+      received: "受付済み",
+      contacted: "確認中",
+      qualifying: "確認中",
+      review: "確認中",
+      proposal: "ご提案済み",
+      matching: "協力先を選定中",
+      agreement: "契約",
+      engaged: "契約",
+      in_progress: "対応中",
+      completed: "完了",
+      repeat: "完了",
+      lost: "終了",
+      closed: "終了",
+    },
+    applicantStatuses: {
+      received: "受付済み",
+      qualified: "選考待ち",
+      verifying: "確認中",
+      verified: "確認済み",
+      available: "ご紹介可能",
+      declined: "今回は見送り",
+    },
+    details: "お送りいただいた内容",
+    files: "ファイル",
+    help: "内容の追加やご質問は、確認メールにご返信いただくか、contact@ittsuiworks.com までご連絡ください。",
+  },
   mail: {
+    inquiryAck: {
+      subject: {
+        talent_request: "技術者のご依頼を受け付けました（{reference}）",
+        project: "業務用の案件を受け付けました（{reference}）",
+        technician: "ご登録を受け付けました（{reference}）",
+        partner: "協力会社のご登録を受け付けました（{reference}）",
+      },
+      lines: [
+        "{name} 様",
+        "一対ワークスの担当チームが内容を受け付けました。受付番号：{reference}",
+        "お送りいただいた内容と現在の状況は、いつでも専用ページでご確認いただけます。",
+        "{link}",
+        "内容の追加や資料の送付は、このメールにご返信ください。",
+      ],
+    },
     confirmJob: {
       subject: "求人を公開する：{title}",
       lines: [

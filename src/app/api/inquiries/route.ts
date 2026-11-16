@@ -1,5 +1,5 @@
 import { getDictionary } from "@/content";
-import { CREW_SIZES, ENGAGEMENTS, EXPERIENCE, HEADCOUNTS, POWER, PROJECT_SIZES, SOURCING_TRADES, STARTS, UPLOAD, collectsSeekers } from "@/lib/config";
+import { CREW_SIZES, DURATIONS, ENGAGEMENTS, EXPERIENCE, HEADCOUNTS, POWER, PROJECT_SIZES, SOURCING_TRADES, STARTS, UPLOAD, collectsSeekers } from "@/lib/config";
 import { fail, readForm, reader, refuse } from "@/lib/guard";
 import { createInquiry, isKind, type NewInquiry, type Upload } from "@/lib/pipeline";
 
@@ -7,6 +7,14 @@ export const maxDuration = 30;
 
 const FACILITIES = ["datacenter", "industrial", "commercial", "marine", "other"] as const;
 const UPLOAD_EXT = /\.(pdf|jpe?g|png|heic|docx?)$/i;
+
+/** Files under one form field: PDF, image or Word only, UPLOAD.maxBytes in total; null when one is refused. */
+async function readFiles(form: FormData, name: string, max: number): Promise<Upload[] | null> {
+  const files = form.getAll(name).filter((f): f is File => f instanceof File && f.size > 0).slice(0, max);
+  const total = files.reduce((sum, f) => sum + f.size, 0);
+  if (total > UPLOAD.maxBytes || files.some((f) => !((UPLOAD.types as readonly string[]).includes(f.type) || UPLOAD_EXT.test(f.name)))) return null;
+  return Promise.all(files.map(async (f) => ({ name: f.name || "file", type: f.type || "application/octet-stream", bytes: Buffer.from(await f.arrayBuffer()) })));
+}
 
 /**
  * The four forms of the sourcing network: technician requests (/request), commercial projects (/post-project),
@@ -42,7 +50,7 @@ export async function POST(request: Request) {
   if (form.get("consent") !== "yes") invalid.push("consent");
 
   let input: NewInquiry;
-  let file: Upload | null = null;
+  let files: Upload[] = [];
   if (kind === "talent_request") {
     need("trades", trades, trades.length > 0);
     input = {
@@ -55,11 +63,14 @@ export async function POST(request: Request) {
         "Technicians needed": need("headcount", r.oneOf("headcount", HEADCOUNTS)) as string,
         Engagement: need("engagement", r.oneOf("engagement", ENGAGEMENTS)) as string,
         Start: need("start", r.text("start", 40)) as string,
+        "Project duration": need("duration", r.oneOf("duration", DURATIONS)) as string,
         "The work": need("description", r.text("description", 4000), r.text("description", 4000).length >= 20) as string,
         "Licenses or certifications required": r.text("licenses", 400),
         "Pay range": r.text("pay", 80),
       },
     };
+    // Paid placement is offered for US hires only (Samuel, 16 Nov 2026); checked here, not only in the form.
+    if (base.country && base.country !== "US") invalid.push("country");
   } else if (kind === "project") {
     need("trades", trades, trades.length > 0);
     const approved = r.oneOf("budget_approved", ["yes", "no"] as const);
@@ -78,8 +89,12 @@ export async function POST(request: Request) {
         Start: need("start", r.oneOf("start", STARTS)) as string,
         "Power secured": need("power", r.oneOf("power", POWER)) as string,
         "Budget approved": approved ?? "",
+        "Required qualifications": r.text("qualifications", 400),
       },
     };
+    const docs = await readFiles(form, "documents", 3);
+    if (docs === null) invalid.push("documents");
+    else files = docs;
   } else if (kind === "technician") {
     const trade = r.oneOf("trade", SOURCING_TRADES);
     need("trade", trade);
@@ -89,12 +104,9 @@ export async function POST(request: Request) {
     if (form.get("consent_profile") !== "yes") invalid.push("consent_profile");
     const available = r.text("available", 10);
     need("available", available, /^\d{4}-\d{2}-\d{2}$/.test(available));
-    const upload = form.get("file");
-    if (upload instanceof File && upload.size > 0) {
-      const okType = (UPLOAD.types as readonly string[]).includes(upload.type) || UPLOAD_EXT.test(upload.name);
-      if (upload.size > UPLOAD.maxBytes || !okType) invalid.push("file");
-      else file = { name: upload.name || "file", type: upload.type || "application/octet-stream", bytes: Buffer.from(await upload.arrayBuffer()) };
-    }
+    const resume = await readFiles(form, "file", 1);
+    if (resume === null) invalid.push("file");
+    else files = resume;
     input = {
       ...base,
       kind,
@@ -122,12 +134,13 @@ export async function POST(request: Request) {
         "Crew size": need("crew", r.oneOf("crew", CREW_SIZES)) as string,
         "Service areas": need("areas", r.text("areas", 300)) as string,
         "Typical project size": need("size", r.oneOf("size", PROJECT_SIZES)) as string,
+        "Insurance details": r.text("insurance_details", 200),
       },
     };
   }
   if (invalid.length) return fail("invalid", 400, [...new Set(invalid)]);
   try {
-    await createInquiry(input, file);
+    await createInquiry(input, files);
     return Response.json({ ok: true });
   } catch (error) {
     console.error("[inquiries] failed:", error instanceof Error ? error.message : "unknown");

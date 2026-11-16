@@ -5,9 +5,9 @@
  */
 export const en = {
   meta: {
-    title: "Ittsui Works | Commercial technicians and licensed trade partners for critical infrastructure",
+    title: "Ittsui Works | Specialized technical workforce and contractor sourcing",
     description:
-      "Technical recruiting and subcontractor sourcing for data center operators, MEP contractors and industrial facilities in the US and Japan: HVAC technicians, commercial electricians and licensed trade partners.",
+      "Technical recruiting and subcontractor sourcing for data center operators, MEP contractors and industrial facilities in the US and Japan: HVAC technicians, commercial electricians and specialist contractors.",
     privacyTitle: "Privacy policy | Ittsui Works",
     termsTitle: "Terms | Ittsui Works",
     jobsTitle: "Jobs for HVAC, data center and marine technicians | Ittsui Works",
@@ -21,6 +21,7 @@ export const en = {
     joinTitle: "Apply as a technician or trade partner | Ittsui Works",
     joinDescription: "Free. HVAC, electrical, data center and marine technicians, and licensed trade companies that take commercial subcontract work.",
     accountTitle: "Your account | Ittsui Works",
+    inquiryTitle: "Your request | Ittsui Works",
   },
   header: {
     positioning: "Technical recruiting and subcontractor sourcing for critical infrastructure.",
@@ -41,10 +42,11 @@ export const en = {
   ],
   hero: {
     kicker: "The AI age is built by hand.",
-    title: ["Commercial Technicians & Licensed Trade Partners.", "Sourced for Critical Infrastructure."],
-    lead: "We connect data center operators, MEP contractors, and industrial facilities across the US and Japan with qualified HVAC technicians, commercial electricians, and licensed subcontractor partners.",
+    title: ["Specialized Technical Workforce", "& Contractor Sourcing."],
+    lead: "Connect with qualified HVAC technicians, commercial electricians and specialist contractors for industrial facilities, critical infrastructure and commercial projects.",
     primary: "Request Technicians",
     secondary: "Submit a Commercial Project",
+    talent: "Find Technical Talent",
     joinLink: "Apply as a Technician or Trade Partner",
     images: [
       { name: "hero-us-1", alt: "An HVAC technician checks rooftop cooling equipment above a city skyline" },
@@ -81,7 +83,7 @@ export const en = {
     items: [
       {
         title: "Sourcing, not a database",
-        text: "A person works every request: we search, screen and match technicians and licensed partners for the role, the site and the license it needs.",
+        text: "A person works every request: we search, screen and match technicians and trade partners for the role, the site and the license it needs.",
       },
       {
         title: "Checked before anyone is presented",
@@ -92,8 +94,8 @@ export const en = {
         text: "New data centers and fabs wait for power and cooling. Both are installed by commercial electricians and cooling technicians, the trades we source.",
       },
       {
-        title: "Licensed partners only",
-        text: "Commercial projects go to trade companies that hold the state license for the work and carry liability and workers' comp insurance, checked before any introduction.",
+        title: "License checks before any introduction",
+        text: "A commercial project goes to a trade company only after we check its state license for the work and its liability and workers' comp insurance.",
       },
     ],
   },
@@ -117,7 +119,7 @@ export const en = {
       tag: "For owners and GCs",
       steps: [
         { title: "Describe the work", text: "Facility, trades, scope, size and start date, and three questions: power, budget and date." },
-        { title: "We match licensed partners", text: "Trade companies licensed for the work in your area, with license and insurance checked first." },
+        { title: "We match trade partners", text: "Trade companies in your area, matched only after we check their license for the work and their insurance." },
         { title: "You contract directly", text: "The licensed contractor signs with you and does the work. Ittsui Works is not a party to that contract." },
       ],
       cta: "Submit a Commercial Project",
@@ -137,6 +139,8 @@ export const en = {
     recruit: "Technicians",
     certs: "Certifications",
     jobs: "See jobs",
+    request: "Request technicians",
+    requestElectricians: "Request electricians",
     items: [
       {
         id: "hvac",
@@ -191,7 +195,7 @@ export const en = {
         tag: "Commercial Project Sourcing",
         big: "8% to 12%",
         sub: "Subcontractor Brokerage Commission",
-        text: "For facility owners and GCs submitting commercial projects ($10k to $250k+): $0 fee to submit an RFP. Licensed, insured trade partners contract directly with the client and pay an agreed referral/brokerage commission only upon secured, paid project milestones (subject to state licensing rules).",
+        text: "For facility owners and GCs submitting commercial projects ($10k to $250k+): $0 fee to submit an RFP. Trade partners, once their license and insurance are checked, contract directly with the client and pay an agreed referral/brokerage commission only upon secured, paid project milestones (subject to state licensing rules).",
       },
     ],
     cta: "Request Technicians",
@@ -211,7 +215,7 @@ export const en = {
     items: [
       {
         q: "What does Ittsui Works do?",
-        a: "Technical recruiting and subcontractor sourcing for critical infrastructure. We connect data center operators, MEP contractors and industrial facilities with HVAC technicians, commercial electricians and licensed trade companies, in the US and Japan.",
+        a: "Technical recruiting and subcontractor sourcing for critical infrastructure. We connect data center operators, MEP contractors and industrial facilities with HVAC technicians, commercial electricians and specialist trade companies, in the US and Japan.",
       },
       { q: "Which trades?", a: "Commercial HVAC, commercial and industrial electrical, data center critical facilities and marine." },
       {
@@ -264,6 +268,7 @@ export const en = {
     sourcingTrades: { hvac: "Commercial HVAC", electrical: "Commercial electrical", datacenter: "Data center", marine: "Marine" },
     projectSizes: { "10k50k": "$10k to $50k", "50k250k": "$50k to $250k", "250k": "$250k and up", unknown: "Not sure yet" },
     engagements: { direct_hire: "Direct hire", contract: "Contract", contract_to_hire: "Contract to hire" },
+    durations: { under1m: "Under 1 month", "1to3m": "1 to 3 months", "3to6m": "3 to 6 months", "6to12m": "6 to 12 months", ongoing: "Permanent or ongoing" },
     facilities: { datacenter: "Data center", industrial: "Industrial facility", commercial: "Commercial building", marine: "Marine or port", other: "Other" },
     yearsSuffix: "years",
     people: "technicians",
@@ -362,7 +367,7 @@ export const en = {
     details: "Scope and you",
     submit: "Submit my project",
     sentTitle: "Your project is with our team",
-    sent: "A person reads it. Replies come from contact@ittsuiworks.com.",
+    sent: "A person reads it, and a confirmation with a private link to your request is in your inbox. Replies come from contact@ittsuiworks.com.",
   },
   request: {
     label: "Technical recruiting and staffing",
@@ -379,7 +384,7 @@ export const en = {
     details: "Details and your company",
     submit: "Request Technicians",
     sentTitle: "Your request is with our team",
-    sent: "A person reads it. Replies come from contact@ittsuiworks.com.",
+    sent: "A person reads it, and a confirmation with a private link to your request is in your inbox. Replies come from contact@ittsuiworks.com.",
   },
   join: {
     label: "Join the network",
@@ -393,7 +398,7 @@ export const en = {
       consentProfile: "I consent to Ittsui Works storing my application and presenting my profile to hiring employers and commercial contractors upon qualification.",
       submit: "Send my application",
       sentTitle: "Your application is with our team",
-      sent: "A person reads it. If your profile matches a role, we write to you before presenting it.",
+      sent: "A person reads it, and a confirmation with a private link to your application is in your inbox. If your profile matches a role, we write to you before presenting it.",
       japan: "Technician applications are open for the United States. In Japan, apply through each job's own employer link.",
     },
     partner: {
@@ -402,7 +407,7 @@ export const en = {
       text: "For licensed electrical, HVAC and mechanical companies that take commercial subcontract work. We check your state license and insurance before sending any project.",
       submit: "Apply as a trade partner",
       sentTitle: "Your application is with our team",
-      sent: "A person reads it and checks your license and insurance before sending any project.",
+      sent: "A person reads it and checks your license and insurance before sending any project. A confirmation with a private link to your application is in your inbox.",
     },
   },
   companies: {
@@ -581,6 +586,13 @@ export const en = {
     pay: "Pay range (optional)",
     payHint: "For example: $38 to $45 an hour",
     facility: "Facility",
+    duration: "Project duration",
+    qualifications: "Required qualifications (optional)",
+    qualificationsHint: "For example: state electrical license, NFPA 70E, OSHA 30",
+    documents: "Supporting documents (optional)",
+    documentsHint: "Scope, drawings or RFP: PDF, image or Word, up to 3 files and 4 MB in total.",
+    insuranceDetails: "Insurance details (optional)",
+    insuranceDetailsHint: "Carrier, policy number and expiry date",
     size: "Project size",
     sending: "Sending",
     failed: "That did not go through. Please try again, or write to contact@ittsuiworks.com.",
@@ -588,7 +600,56 @@ export const en = {
     busy: "Too many tries. Please wait a few minutes.",
     duplicate: "You have already applied for this job.",
   },
+  /** /inquiry/<token>: the sender's private page (16 Nov 2026). */
+  inquiryPage: {
+    title: { talent_request: "Your technician request", project: "Your commercial project", technician: "Your application", partner: "Your trade partner application" },
+    reference: "Reference {reference}",
+    sent: "Sent {date}",
+    status: "Status",
+    statuses: {
+      received: "Received",
+      contacted: "In review",
+      qualifying: "In review",
+      review: "In review",
+      proposal: "Proposal sent",
+      matching: "Matching providers",
+      agreement: "Agreement",
+      engaged: "Agreement",
+      in_progress: "In progress",
+      completed: "Completed",
+      repeat: "Completed",
+      lost: "Closed",
+      closed: "Closed",
+    },
+    applicantStatuses: {
+      received: "Application received",
+      qualified: "Qualification pending",
+      verifying: "Verification in progress",
+      verified: "Verified",
+      available: "Available for matching",
+      declined: "Not taken forward",
+    },
+    details: "What you sent",
+    files: "Files",
+    help: "To add details or ask a question, reply to your confirmation email or write to contact@ittsuiworks.com.",
+  },
   mail: {
+    /** The sender's acknowledgment of a request or application (16 Nov 2026). No promises: what we have, and the link. */
+    inquiryAck: {
+      subject: {
+        talent_request: "We received your technician request ({reference})",
+        project: "We received your commercial project ({reference})",
+        technician: "We received your application ({reference})",
+        partner: "We received your trade partner application ({reference})",
+      },
+      lines: [
+        "Hello {name},",
+        "Your submission is with the Ittsui Works team. Reference: {reference}.",
+        "See what you sent and its status at any time, on your private page:",
+        "{link}",
+        "To add details or a document, reply to this email.",
+      ],
+    },
     confirmJob: {
       subject: "Publish your job: {title}",
       lines: ["Hello {name},", "Open this link and your job \"{title}\" goes live at once, for 30 days:", "{link}", "The same page is your account: applications, renewals and closing the job."],

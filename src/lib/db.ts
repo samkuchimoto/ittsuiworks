@@ -199,6 +199,22 @@ CREATE TABLE IF NOT EXISTS inquiry_files (
   size integer NOT NULL,
   data bytea NOT NULL
 );
+-- Commercial launch (16 Nov 2026), additive only: a private link per request, and the sales activity log.
+ALTER TABLE inquiries ADD COLUMN IF NOT EXISTS token text;
+CREATE UNIQUE INDEX IF NOT EXISTS inquiries_token ON inquiries (token);
+CREATE TABLE IF NOT EXISTS inquiry_events (
+  id text PRIMARY KEY,
+  inquiry_id text NOT NULL REFERENCES inquiries(id) ON DELETE CASCADE,
+  at timestamptz NOT NULL DEFAULT now(),
+  kind text NOT NULL,
+  text text NOT NULL DEFAULT '',
+  due date,
+  owner text NOT NULL DEFAULT '',
+  amount numeric,
+  done boolean NOT NULL DEFAULT false
+);
+CREATE INDEX IF NOT EXISTS inquiry_events_inquiry ON inquiry_events (inquiry_id, at DESC);
+CREATE INDEX IF NOT EXISTS inquiry_events_open ON inquiry_events (kind, done, due);
 `;
 
 function ensureSchema(): Promise<void> {

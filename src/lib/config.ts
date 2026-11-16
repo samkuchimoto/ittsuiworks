@@ -81,6 +81,8 @@ export type SourcingTrade = (typeof SOURCING_TRADES)[number];
 export const PROJECT_SIZES = ["10k50k", "50k250k", "250k"] as const;
 export const ENGAGEMENTS = ["direct_hire", "contract", "contract_to_hire"] as const;
 export const HEADCOUNTS = ["1", "2-5", "6-10", "11-25", "26+"] as const;
+/** How long the technicians are needed (Samuel, 16 Nov 2026: "Project duration"). */
+export const DURATIONS = ["under1m", "1to3m", "3to6m", "6to12m", "ongoing"] as const;
 export const EXPERIENCE = ["0-2", "3-5", "6-10", "10+"] as const;
 export const CREW_SIZES = ["1-5", "6-15", "16-50", "51+"] as const;
 /** Résumé or license upload: PDF, image or Word, under Vercel's 4.5 MB request limit. */

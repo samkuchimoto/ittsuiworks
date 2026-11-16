@@ -107,8 +107,19 @@ export default async function Home({ params }: PageProps<"/[lang]">) {
                       <ArrowIcon />
                     </span>
                   </a>
+                  {/* The third buyer action (16 Nov 2026): talent by specialty, each card with its own request. */}
+                  <a
+                    href="#talent"
+                    className="group flex items-center justify-between gap-4 rounded-lg bg-white px-6 py-[16px] text-[17px] font-semibold text-navy ring-1 ring-navy/25 transition hover:-translate-y-0.5 hover:ring-navy"
+                  >
+                    {t.hero.talent}
+                    <span className="grid size-8 place-items-center rounded-full bg-sky transition group-hover:bg-sky/70">
+                      <ArrowIcon />
+                    </span>
+                  </a>
                 </div>
-                <a href={at("/join")} className="mt-5 inline-flex items-center gap-2 text-[15.5px] font-semibold text-navy underline underline-offset-4 hover:text-orange">
+                {/* Job seekers and trade companies: a separate, quieter way in (buyers first). */}
+                <a href={at("/join")} className="mt-5 inline-flex items-center gap-2 text-[15px] font-semibold text-navy/80 underline underline-offset-4 hover:text-orange">
                   {t.hero.joinLink}
                   <ArrowIcon className="size-4" />
                 </a>
@@ -252,8 +263,8 @@ export default async function Home({ params }: PageProps<"/[lang]">) {
           </div>
         </section>
 
-        {/* Three industries. Each card links to its live jobs. */}
-        <section aria-labelledby="sectors-title" className="bg-mist py-20 lg:py-28">
+        {/* Find technical talent: three industries, each card with a prefilled request and its live jobs. */}
+        <section id="talent" aria-labelledby="sectors-title" className="scroll-mt-16 bg-mist py-20 lg:py-28">
           <div className="mx-auto max-w-[1280px] px-4 sm:px-8">
             <div className="grid gap-6 lg:grid-cols-2 lg:items-end">
               <div>
@@ -299,10 +310,21 @@ export default async function Home({ params }: PageProps<"/[lang]">) {
                         <span className="font-bold text-navy">{t.sectors.certs}: </span>
                         {sector.certs}
                       </p>
-                      <a href={at(`/jobs?trade=${sector.id}`)} className="mt-4 inline-flex items-center gap-2 text-[15px] font-semibold text-navy underline-offset-4 hover:underline">
-                        {t.sectors.jobs}
-                        <ArrowIcon className="size-4" />
-                      </a>
+                      <div className="mt-5 flex flex-wrap items-center gap-x-5 gap-y-3">
+                        <a href={at(`/request?trade=${sector.id}`)} className="inline-flex items-center gap-2 rounded-md bg-orange px-4 py-2.5 text-[14.5px] font-semibold text-white transition hover:bg-orange-deep">
+                          {t.sectors.request}
+                          <ArrowIcon className="size-4" />
+                        </a>
+                        {sector.id === "datacenter" && (
+                          <a href={at("/request?trade=electrical")} className="text-[14.5px] font-semibold text-navy underline underline-offset-4 hover:text-orange">
+                            {t.sectors.requestElectricians}
+                          </a>
+                        )}
+                        <a href={at(`/jobs?trade=${sector.id}`)} className="inline-flex items-center gap-2 text-[14.5px] font-semibold text-navy/80 underline-offset-4 hover:underline">
+                          {t.sectors.jobs}
+                          <ArrowIcon className="size-4" />
+                        </a>
+                      </div>
                     </div>
                   </div>
                 </article>

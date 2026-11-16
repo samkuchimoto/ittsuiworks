@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
 import type { Dict } from "@/content";
-import { CREW_SIZES, CURRENCIES, EMPLOYMENT, ENGAGEMENTS, EXPERIENCE, HEADCOUNTS, PAY_UNITS, POWER, PROJECT_SIZES, SOURCING_TRADES, STARTS, TRADES } from "@/lib/config";
+import { CREW_SIZES, CURRENCIES, DURATIONS, EMPLOYMENT, ENGAGEMENTS, EXPERIENCE, HEADCOUNTS, PAY_UNITS, POWER, PROJECT_SIZES, SOURCING_TRADES, STARTS, TRADES } from "@/lib/config";
 import { currencyFor } from "@/lib/countries";
 import { pathFor, type Locale } from "@/lib/site";
 import { ArrowIcon, CheckIcon } from "./Icons";
@@ -421,7 +421,7 @@ function BackButton({ t, onClick }: { t: Dict["form"]; onClick: () => void }) {
   );
 }
 
-const REQUEST_STEP_ONE = ["trades", "role", "headcount", "country", "place", "start"];
+const REQUEST_STEP_ONE = ["trades", "role", "headcount", "country", "place", "start", "duration"];
 const PROJECT_STEP_ONE = ["facility", "size", "trades", "country", "place", "start"];
 
 /** Employers: a recruiting and staffing request (/request). */
@@ -458,6 +458,9 @@ export function RequestForm({ lang, t, countries }: { lang: Locale; t: NetText &
         </Field>
         <Field id="rq-start" label={f.startDate}>
           <input id="rq-start" name="start" type="date" required className="field" aria-invalid={off("start")} />
+        </Field>
+        <Field id="rq-duration" label={f.duration}>
+          <Select id="rq-duration" name="duration" options={DURATIONS.map((k) => [k, t.ui.durations[k]])} placeholder={f.select} bad={off("duration")} />
         </Field>
         <NextButton t={f} onClick={next} missing={missing.length > 0} />
       </div>
@@ -507,7 +510,7 @@ export function CommercialProjectForm({ lang, t, countries }: { lang: Locale; t:
   const off = (name: string) => (missing.includes(name) || bad(name) ? true : undefined);
   if (status === "done") return <Done title={t.postProject.sentTitle} text={t.postProject.sent} />;
   return (
-    <form ref={formRef} onSubmit={submit} noValidate className="grid scroll-mt-24 gap-4 sm:grid-cols-2">
+    <form ref={formRef} onSubmit={submit} noValidate encType="multipart/form-data" className="grid scroll-mt-24 gap-4 sm:grid-cols-2">
       <input type="hidden" name="lang" value={lang} />
       <input type="hidden" name="kind" value="project" />
       <Honeypot />
@@ -545,6 +548,13 @@ export function CommercialProjectForm({ lang, t, countries }: { lang: Locale; t:
         <Select id="pj-power" name="power" options={POWER.map((k) => [k, t.ui.power[k]])} placeholder={f.select} bad={bad("power")} />
       </Field>
       <Pills name="budget_approved" legend={f.budgetApproved} options={ynOptions(t.ui)} bad={bad("budget_approved")} />
+      <Field id="pj-qualifications" label={f.qualifications} wide>
+        <input id="pj-qualifications" name="qualifications" maxLength={400} placeholder={f.qualificationsHint} className="field placeholder:text-mute/70" />
+      </Field>
+      <Field id="pj-documents" label={f.documents} wide>
+        <input id="pj-documents" name="documents" type="file" multiple accept=".pdf,.jpg,.jpeg,.png,.heic,.doc,.docx" className="field file:mr-3 file:rounded file:border-0 file:bg-sky file:px-3 file:py-1.5 file:text-navy" aria-invalid={bad("documents")} />
+        <p className="mt-1.5 text-[13px] text-mute">{f.documentsHint}</p>
+      </Field>
       <Legend>{t.postProject.you}</Legend>
       <Field id="pj-company" label={f.company}>
         <input id="pj-company" name="company" required maxLength={120} autoComplete="organization" className="field" aria-invalid={bad("company")} />
@@ -652,6 +662,9 @@ export function PartnerForm({ lang, t, countries }: { lang: Locale; t: NetText &
         <input id="pt-license" name="license" required maxLength={80} className="field" aria-invalid={bad("license")} />
       </Field>
       <Pills name="insurance" legend={f.insurance} options={ynOptions(t.ui)} bad={bad("insurance")} />
+      <Field id="pt-insurance-details" label={f.insuranceDetails} wide>
+        <input id="pt-insurance-details" name="insurance_details" maxLength={200} placeholder={f.insuranceDetailsHint} className="field placeholder:text-mute/70" />
+      </Field>
       <Field id="pt-crew" label={f.crew}>
         <Select id="pt-crew" name="crew" options={CREW_SIZES.map((k) => [k, k])} placeholder={f.select} bad={bad("crew")} />
       </Field>

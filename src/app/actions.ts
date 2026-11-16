@@ -116,7 +116,10 @@ export async function adminAddCandidateAction(form: FormData) {
   await createInquiry({
     kind: "technician",
     source: "indeed",
+    // Qualification Pending: they answered the questions; answering never makes anyone verified (16 Nov 2026).
     stage: "qualified",
+    // Typed in from Indeed messages: the site sends them nothing (Indeed's terms; Samuel writes to them himself).
+    acknowledge: false,
     name: read(form, "name", 100),
     email,
     phone: read(form, "phone", 40),
@@ -136,5 +139,31 @@ export async function adminAddCandidateAction(form: FormData) {
       "Indeed post": read(form, "post", 120),
     },
   });
-  back("Added at stage 1.");
+  back("Added at Qualification Pending.");
+}
+
+/** The sales activity log (16 Nov 2026): a call, email, meeting, note, follow-up (with a due date and owner) or proposal. */
+export async function adminEventAction(form: FormData) {
+  if (!adminOk(form)) redirect("/");
+  const key = read(form, "key", 100);
+  const { EVENT_KINDS, addEvent } = await import("@/lib/pipeline");
+  const kind = read(form, "kind", 12);
+  const text = String(form.get("text") ?? "").trim().slice(0, 2000);
+  const due = read(form, "due", 10);
+  const amountText = read(form, "amount", 14).replace(/[,\s$]/g, "");
+  const amount = amountText ? Number(amountText) : null;
+  const id = read(form, "id", 12);
+  let msg = "Logged.";
+  if (!(EVENT_KINDS as readonly string[]).includes(kind) || !text) msg = "Not logged: choose a kind and write what happened.";
+  else if (due && !/^\d{4}-\d{2}-\d{2}$/.test(due)) msg = "Not logged: the due date is not a date.";
+  else if (amount !== null && !(Number.isFinite(amount) && amount >= 0 && amount < 1e9)) msg = "Not logged: the amount is not a number.";
+  else await addEvent(id, { kind: kind as (typeof EVENT_KINDS)[number], text, due: due || null, owner: read(form, "owner", 60), amount });
+  redirect(`/admin/${key}?msg=${encodeURIComponent(msg)}#lead-${id}`);
+}
+
+export async function adminEventDoneAction(form: FormData) {
+  if (!adminOk(form)) redirect("/");
+  const { completeEvent } = await import("@/lib/pipeline");
+  await completeEvent(read(form, "event", 12));
+  redirect(`/admin/${read(form, "key", 100)}?msg=${encodeURIComponent("Follow-up done.")}#pipeline`);
 }

@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { connection } from "next/server";
-import { adminAddCandidateAction, adminCloseJobAction, adminStageAction, importProspectsAction } from "@/app/actions";
+import { adminAddCandidateAction, adminCloseJobAction, adminEventAction, adminEventDoneAction, adminStageAction, importProspectsAction } from "@/app/actions";
 import { Card, Shell } from "@/components/Shell";
 import { getDictionary } from "@/content";
 import { clicksByEmployer } from "@/lib/clicks";
@@ -9,7 +9,7 @@ import { PRICING, SOURCING_TRADES, paymentsOn } from "@/lib/config";
 import { hasDatabase, query } from "@/lib/db";
 import { listJobs, marketStats } from "@/lib/market";
 import { isOperator, outreachConfig, outreachStats, renderLeadOffer, renderOutreach, type Prospect } from "@/lib/outreach";
-import { CHECKS, KINDS, KIND_LABEL, STAGES, STAGE_LABEL, listInquiries } from "@/lib/pipeline";
+import { CHECKS, EVENT_KINDS, KIND_LABEL, STAGES, eventsFor, labelFor, listInquiries, openFollowups } from "@/lib/pipeline";
 import { privatePage } from "@/lib/seo";
 
 export const metadata: Metadata = privatePage;
@@ -23,8 +23,9 @@ export default async function Admin({ params, searchParams }: PageProps<"/[lang]
   const t = getDictionary("en");
   const { imported, msg: rawMsg } = await searchParams;
   const msg = typeof rawMsg === "string" ? rawMsg.slice(0, 200) : "";
-  const [pipeline, stats, prospects, { jobs }, sample, operator, firstContractor, employers] = await Promise.all([
+  const [pipeline, followups, stats, prospects, { jobs }, sample, operator, firstContractor, employers] = await Promise.all([
     listInquiries(),
+    openFollowups(),
     marketStats(),
     outreachStats(),
     listJobs({ perPage: 30 }),
@@ -37,6 +38,8 @@ export default async function Admin({ params, searchParams }: PageProps<"/[lang]
     ),
     clicksByEmployer(30, 30),
   ]);
+  const events = await eventsFor(Object.values(pipeline).flat().map((r) => r.id));
+  const today = new Date().toISOString().slice(0, 10);
   const cfg = outreachConfig();
   // The next contractor in line (the newest rows are often operators).
   const contractor = firstContractor[0] ?? sample.find((p) => !isOperator(p));
@@ -85,21 +88,47 @@ export default async function Admin({ params, searchParams }: PageProps<"/[lang]
 
         <Card>
           <div id="pipeline" className="scroll-mt-24" />
-          <h2 className="text-[20px] font-bold text-navy">Sourcing pipeline</h2>
+          <h2 className="text-[20px] font-bold text-navy">Sales and sourcing pipeline</h2>
           <p className="mt-2 text-[14.5px] text-mute">
-            Every request, project and application from the site, and Indeed candidates you add below. Nobody is introduced and nothing is charged until you move them here: stage 2 needs license, identity and work history checked; &quot;engaged&quot; needs the signed agreement (and, for a project, the partner&apos;s license and insurance).
+            Every request, project and application from the site, plus Indeed candidates you add below. Buyers move New Lead, Contacted, Qualified, Proposal, Provider Matching, Agreement, In Progress, Completed, Repeat Customer; Agreement and later need the signed agreement ticked (and, for a project, the partner&apos;s license and insurance). Applicants move Application Received, Qualification Pending, Verification In Progress, Verified, Available for Matching; Verified and Available need the checks ticked. Nobody is introduced and nothing is charged from here.
           </p>
           {msg && <p className={`mt-4 ${box}`}>{msg}</p>}
-          {KINDS.map((kind) => {
+
+          <div className="mt-6 rounded-xl bg-sky p-4">
+            <h3 className="text-[15px] font-bold text-navy">Follow-ups due ({followups.length})</h3>
+            {followups.length === 0 ? (
+              <p className="mt-2 text-[14px] text-mute">None open. Add one with &quot;Log activity&quot; and the kind Follow-up.</p>
+            ) : (
+              <ul className="mt-2 divide-y divide-line text-[14px]">
+                {followups.map((e) => (
+                  <li key={e.id} className="flex flex-wrap items-center justify-between gap-3 py-2">
+                    <span>
+                      <b className={e.due && e.due <= today ? "text-orange-deep" : "text-navy"}>{e.due ?? "no date"}</b> · <a href={`#lead-${e.inquiry_id}`} className="font-semibold underline">{e.who}</a> · {e.text}
+                      {e.owner ? ` · ${e.owner}` : ""}
+                    </span>
+                    <form action={adminEventDoneAction}>
+                      <input type="hidden" name="key" value={key} />
+                      <input type="hidden" name="event" value={e.id} />
+                      <button className="rounded-md px-3 py-1.5 text-[13px] font-semibold text-navy ring-1 ring-navy/30">Mark done</button>
+                    </form>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+
+          {(["talent_request", "project", "technician", "partner"] as const).map((kind) => {
             const rows = pipeline[kind];
-            const gate = Object.keys(CHECKS).find((k) => k.startsWith(`${kind}:`));
-            const checks = gate ? CHECKS[gate] : [];
             return (
               <div key={kind} className="mt-8">
                 <h3 className="text-[16px] font-bold text-navy">
                   {KIND_LABEL[kind]}: {rows.length}
-                  <span className="ml-2 text-[13.5px] font-normal text-mute">
-                    {STAGES[kind].map((s) => `${STAGE_LABEL[s]} ${rows.filter((r) => r.stage === s).length}`).join(" · ")}
+                  <span className="ml-2 text-[13px] font-normal text-mute">
+                    {STAGES[kind]
+                      .map((s) => [labelFor(kind, s), rows.filter((r) => r.stage === s).length] as const)
+                      .filter(([, n]) => n > 0)
+                      .map(([label, n]) => `${label} ${n}`)
+                      .join(" · ")}
                   </span>
                 </h3>
                 {rows.length === 0 ? (
@@ -107,13 +136,13 @@ export default async function Admin({ params, searchParams }: PageProps<"/[lang]
                 ) : (
                   <ul className="mt-3 space-y-4">
                     {rows.map((r) => (
-                      <li key={r.id} className="rounded-xl bg-mist p-4 text-[14px]">
+                      <li key={r.id} id={`lead-${r.id}`} className="scroll-mt-24 rounded-xl bg-mist p-4 text-[14px]">
                         <p className="flex flex-wrap justify-between gap-2">
                           <b className="text-navy">
                             {r.company ? `${r.company} · ` : ""}
-                            {r.name}
+                            {r.name} <span className="font-normal text-mute">({r.id.toUpperCase()})</span>
                           </b>
-                          <span className="text-[12.5px] font-bold uppercase tracking-[0.1em] text-orange">{STAGE_LABEL[r.stage] ?? r.stage}</span>
+                          <span className="text-[12.5px] font-bold uppercase tracking-[0.1em] text-orange">{labelFor(kind, r.stage)}</span>
                         </p>
                         <p className="mt-1 text-mute">
                           <a href={`mailto:${r.email}`} className="underline">
@@ -135,30 +164,61 @@ export default async function Admin({ params, searchParams }: PageProps<"/[lang]
                           </p>
                         )}
                         {(r.files ?? []).map((file) => (
-                          <a key={file.id} href={`/api/admin/${key}/file/${file.id}`} className="mt-2 inline-block font-semibold text-navy underline">
+                          <a key={file.id} href={`/api/admin/${key}/file/${file.id}`} className="mr-4 mt-2 inline-block font-semibold text-navy underline">
                             Download {file.name} ({Math.round(file.size / 1024)} KB)
                           </a>
                         ))}
                         {Object.keys(r.checks).length > 0 && <p className="mt-2 text-[13px] text-navy">Checked: {Object.entries(r.checks).map(([k, v]) => `${k} (${v})`).join(" · ")}</p>}
                         {r.notes && <p className="mt-2 whitespace-pre-wrap text-[13px] text-mute">{r.notes}</p>}
+
+                        {(events[r.id] ?? []).length > 0 && (
+                          <ul className="mt-3 space-y-1 border-l-2 border-navy/20 pl-3 text-[13px]">
+                            {(events[r.id] ?? []).map((e) => (
+                              <li key={e.id} className={e.kind === "followup" && e.done ? "text-mute line-through" : ""}>
+                                <span className="text-mute">{new Date(e.at).toISOString().slice(0, 16).replace("T", " ")}</span> <b className="uppercase">{e.kind}</b>
+                                {e.amount ? ` · ${e.amount}` : ""}
+                                {e.due ? ` · due ${e.due}` : ""}
+                                {e.owner ? ` · ${e.owner}` : ""} · {e.text}
+                              </li>
+                            ))}
+                          </ul>
+                        )}
+
                         <form action={adminStageAction} className="mt-3 flex flex-wrap items-end gap-3 border-t border-line pt-3">
                           <input type="hidden" name="key" value={key} />
                           <input type="hidden" name="id" value={r.id} />
                           <select name="stage" defaultValue={r.stage} className="field w-auto py-2 text-[14px]">
                             {STAGES[kind].map((s) => (
                               <option key={s} value={s}>
-                                {STAGE_LABEL[s]}
+                                {labelFor(kind, s)}
                               </option>
                             ))}
                           </select>
-                          {checks.map((c) => (
+                          {CHECKS[kind].map((c) => (
                             <label key={c.key} className="flex max-w-[22rem] items-start gap-2 text-[13px]">
                               <input type="checkbox" name="checks" value={c.key} defaultChecked={Boolean(r.checks[c.key])} className="mt-0.5 accent-navy" />
                               {c.label}
                             </label>
                           ))}
-                          <input name="note" maxLength={500} placeholder="Note (license lookup URL, who confirmed...)" className="field min-w-[16rem] flex-1 py-2 text-[14px]" />
-                          <button className="rounded-md bg-navy px-4 py-2 text-[14px] font-semibold text-white">Save</button>
+                          <input name="note" maxLength={500} placeholder="Note (lookup URL, who confirmed...)" className="field min-w-[14rem] flex-1 py-2 text-[14px]" />
+                          <button className="rounded-md bg-navy px-4 py-2 text-[14px] font-semibold text-white">Save stage</button>
+                        </form>
+
+                        <form action={adminEventAction} className="mt-2 flex flex-wrap items-end gap-2">
+                          <input type="hidden" name="key" value={key} />
+                          <input type="hidden" name="id" value={r.id} />
+                          <select name="kind" defaultValue="call" className="field w-auto py-2 text-[14px]" aria-label="Activity">
+                            {EVENT_KINDS.map((k) => (
+                              <option key={k} value={k}>
+                                {{ call: "Call", email: "Email", meeting: "Meeting", note: "Note", followup: "Follow-up", proposal: "Proposal" }[k]}
+                              </option>
+                            ))}
+                          </select>
+                          <input name="text" required maxLength={2000} placeholder="What was said, decided or sent" className="field min-w-[16rem] flex-1 py-2 text-[14px]" />
+                          <input name="due" type="date" className="field w-auto py-2 text-[14px]" aria-label="Due date (follow-up)" />
+                          <input name="owner" maxLength={60} placeholder="Owner" className="field w-[8rem] py-2 text-[14px]" />
+                          <input name="amount" inputMode="decimal" maxLength={14} placeholder="Amount (USD)" className="field w-[9rem] py-2 text-[14px]" />
+                          <button className="rounded-md px-4 py-2 text-[14px] font-semibold text-navy ring-1 ring-navy/30">Log activity</button>
                         </form>
                       </li>
                     ))}
@@ -170,7 +230,7 @@ export default async function Admin({ params, searchParams }: PageProps<"/[lang]
 
           <form action={adminAddCandidateAction} className="mt-10 grid gap-3 rounded-xl bg-sky p-5 sm:grid-cols-2">
             <input type="hidden" name="key" value={key} />
-            <p className="text-[15px] font-bold text-navy sm:col-span-2">Add an Indeed candidate who said yes to question 3 (lands at stage 1)</p>
+            <p className="text-[15px] font-bold text-navy sm:col-span-2">Add an Indeed candidate who said yes to question 3 (lands at Qualification Pending; no email is sent to them)</p>
             <input name="name" required placeholder="Full name" className="field" />
             <input name="email" type="email" required placeholder="Email they gave" className="field" />
             <input name="phone" placeholder="Phone they gave" className="field" />
@@ -198,7 +258,7 @@ export default async function Admin({ params, searchParams }: PageProps<"/[lang]
               <input type="checkbox" name="consent_yes" value="yes" required className="mt-1 accent-navy" />
               They replied yes to question 3 (consent to be presented) in Indeed messages.
             </label>
-            <button className="rounded-md bg-navy px-5 py-3 text-[15px] font-semibold text-white sm:col-span-2 sm:justify-self-start">Add at stage 1</button>
+            <button className="rounded-md bg-navy px-5 py-3 text-[15px] font-semibold text-white sm:col-span-2 sm:justify-self-start">Add at Qualification Pending</button>
           </form>
         </Card>
 
