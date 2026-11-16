@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type FormEvent, type ReactNode } from "react";
+import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
 import type { Dict } from "@/content";
 import { CREW_SIZES, CURRENCIES, EMPLOYMENT, ENGAGEMENTS, EXPERIENCE, HEADCOUNTS, PAY_UNITS, POWER, PROJECT_SIZES, SOURCING_TRADES, STARTS, TRADES } from "@/lib/config";
 import { currencyFor } from "@/lib/countries";
@@ -34,7 +34,7 @@ function useSubmit(endpoint: string) {
     }
   }
   const bad = (name: string) => (invalid.includes(name) ? true : undefined);
-  return { status, submit, bad, result };
+  return { status, submit, bad, result, invalid };
 }
 
 export function Field({ id, label, wide, children }: { id: string; label: string; wide?: boolean; children: ReactNode }) {
@@ -319,14 +319,14 @@ const pill =
   "inline-flex rounded-full border border-line px-4 py-2 text-[14.5px] text-ink transition peer-checked:border-navy peer-checked:bg-navy peer-checked:text-white peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-orange";
 
 /** Pick one or more (checkboxes) or exactly one (radios), shown as pills. */
-function Pills({ name, legend, options, multiple, bad }: { name: string; legend: string; options: [string, string][]; multiple?: boolean; bad?: true }) {
+function Pills({ name, legend, options, multiple, bad, defaults = [] }: { name: string; legend: string; options: [string, string][]; multiple?: boolean; bad?: true; defaults?: string[] }) {
   return (
     <fieldset className="sm:col-span-2">
       <legend className="mb-2 text-[14px] font-semibold text-navy">{legend}</legend>
       <div className="flex flex-wrap gap-2" aria-invalid={bad}>
         {options.map(([value, label]) => (
           <label key={value} className="cursor-pointer">
-            <input type={multiple ? "checkbox" : "radio"} name={name} value={value} required={!multiple} className="peer sr-only" />
+            <input type={multiple ? "checkbox" : "radio"} name={name} value={value} required={!multiple} defaultChecked={defaults.includes(value)} className="peer sr-only" />
             <span className={pill}>{label}</span>
           </label>
         ))}
@@ -344,35 +344,126 @@ const ynOptions = (t: Dict["ui"]): [string, string][] => [
 
 type NetText = { form: Dict["form"]; ui: Dict["ui"] };
 
+/**
+ * What the home page's quick selector chose (16 Nov 2026): ?trade= and ?hub=, read in the browser so the form pages stay
+ * static. The hub fills the country and the place; the trade is ticked. The visitor can change everything.
+ */
+type Preset = { trade: string; country: string; place: string } | null;
+function usePreset(places: Dict["selector"]["places"]): Preset {
+  const [preset, setPreset] = useState<Preset>(null);
+  useEffect(() => {
+    const q = new URLSearchParams(window.location.search);
+    const trade = (SOURCING_TRADES as readonly string[]).includes(q.get("trade") ?? "") ? (q.get("trade") as string) : "";
+    const hub = q.get("hub") ?? "";
+    const hubs: Record<string, { country: string; place: string }> = {
+      tx: { country: "US", place: places.tx },
+      fl: { country: "US", place: places.fl },
+      us: { country: "US", place: places.us },
+      jp: { country: "JP", place: places.jp },
+    };
+    if (trade || hubs[hub]) setPreset({ trade, country: hubs[hub]?.country ?? "", place: hubs[hub]?.place ?? "" });
+  }, [places]);
+  return preset;
+}
+
+/** Two steps instead of one long form: step 1 is checked in the browser before step 2 opens; all fields post together. */
+function useTwoSteps(formRef: React.RefObject<HTMLFormElement | null>, stepOne: string[], serverInvalid: string[]) {
+  const [step, setStep] = useState<1 | 2>(1);
+  const [missing, setMissing] = useState<string[]>([]);
+  // A field of step 1 refused by the server: back to step 1.
+  useEffect(() => {
+    if (serverInvalid.some((f) => stepOne.includes(f))) setStep(1);
+  }, [serverInvalid, stepOne]);
+  const next = () => {
+    const data = formRef.current ? new FormData(formRef.current) : new FormData();
+    const empty = stepOne.filter((name) => !data.getAll(name).some((v) => String(v).trim() !== ""));
+    setMissing(empty);
+    if (empty.length === 0) {
+      setStep(2);
+      formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  };
+  return { step, setStep, next, missing };
+}
+
+function StepHead({ t, n, title }: { t: Dict["form"]; n: 1 | 2; title: string }) {
+  return (
+    <div className="flex items-baseline gap-3 border-b border-line pb-2 sm:col-span-2">
+      <span className="font-display text-[15px] text-orange">{fillIn(t.step, { n: String(n) })}</span>
+      <span className="text-[12.5px] font-bold uppercase tracking-[0.16em] text-navy">{title}</span>
+    </div>
+  );
+}
+
+function NextButton({ t, onClick, missing }: { t: Dict["form"]; onClick: () => void; missing: boolean }) {
+  return (
+    <div className="flex flex-col gap-3 sm:col-span-2 sm:flex-row sm:items-center">
+      <button
+        type="button"
+        onClick={onClick}
+        className="group inline-flex items-center justify-center gap-3 rounded-md bg-navy px-7 py-4 text-[16px] font-semibold text-white transition hover:bg-navy-deep"
+      >
+        {t.next}
+        <ArrowIcon className="size-4 transition group-hover:translate-x-0.5" />
+      </button>
+      <p aria-live="polite" className="text-[14.5px] font-medium text-orange-deep">
+        {missing ? t.invalid : ""}
+      </p>
+    </div>
+  );
+}
+
+function BackButton({ t, onClick }: { t: Dict["form"]; onClick: () => void }) {
+  return (
+    <button type="button" onClick={onClick} className="justify-self-start text-[15px] font-semibold text-navy underline underline-offset-4 hover:text-orange sm:col-span-2">
+      {t.back}
+    </button>
+  );
+}
+
+const REQUEST_STEP_ONE = ["trades", "role", "headcount", "country", "place", "start"];
+const PROJECT_STEP_ONE = ["facility", "size", "trades", "country", "place", "start"];
+
 /** Employers: a recruiting and staffing request (/request). */
-export function RequestForm({ lang, t, countries }: { lang: Locale; t: NetText & { request: Dict["request"] }; countries: [string, string][] }) {
-  const { status, submit, bad } = useSubmit("/api/inquiries");
+export function RequestForm({ lang, t, countries }: { lang: Locale; t: NetText & { request: Dict["request"]; selector: Dict["selector"] }; countries: [string, string][] }) {
+  const { status, submit, bad, invalid } = useSubmit("/api/inquiries");
+  const formRef = useRef<HTMLFormElement>(null);
+  const preset = usePreset(t.selector.places);
+  const { step, setStep, next, missing } = useTwoSteps(formRef, REQUEST_STEP_ONE, invalid);
   const f = t.form;
+  const off = (name: string) => (missing.includes(name) || bad(name) ? true : undefined);
   if (status === "done") return <Done title={t.request.sentTitle} text={t.request.sent} />;
   return (
-    <form onSubmit={submit} noValidate className="grid gap-4 sm:grid-cols-2">
+    <form ref={formRef} onSubmit={submit} noValidate className="grid scroll-mt-24 gap-4 sm:grid-cols-2">
       <input type="hidden" name="lang" value={lang} />
       <input type="hidden" name="kind" value="talent_request" />
       <Honeypot />
-      <Legend>{t.request.role}</Legend>
-      <Pills name="trades" legend={f.tradesNeeded} options={sourcingOptions(t.ui)} multiple bad={bad("trades")} />
-      <Field id="rq-role" label={f.roleTitle} wide>
-        <input id="rq-role" name="role" required maxLength={80} placeholder={f.roleTitleHint} className="field placeholder:text-mute/70" aria-invalid={bad("role")} />
-      </Field>
-      <Field id="rq-headcount" label={f.headcount}>
-        <Select id="rq-headcount" name="headcount" options={HEADCOUNTS.map((k) => [k, `${k} ${t.ui.people}`])} placeholder={f.select} bad={bad("headcount")} />
-      </Field>
+      {/* Step 1: the role, where and when. Hidden fields still post with the form. */}
+      <div key={preset ? "preset" : "plain"} className={step === 1 ? "contents" : "hidden"}>
+        <StepHead t={f} n={1} title={t.request.role} />
+        <Pills name="trades" legend={f.tradesNeeded} options={sourcingOptions(t.ui)} multiple bad={off("trades")} defaults={preset?.trade ? [preset.trade] : []} />
+        <Field id="rq-role" label={f.roleTitle} wide>
+          <input id="rq-role" name="role" required maxLength={80} placeholder={f.roleTitleHint} className="field placeholder:text-mute/70" aria-invalid={off("role")} />
+        </Field>
+        <Field id="rq-headcount" label={f.headcount}>
+          <Select id="rq-headcount" name="headcount" options={HEADCOUNTS.map((k) => [k, `${k} ${t.ui.people}`])} placeholder={f.select} bad={off("headcount")} />
+        </Field>
+        <Field id="rq-country" label={f.country}>
+          <Select id="rq-country" name="country" options={countries} placeholder={f.select} defaultValue={preset?.country || (lang === "ja" ? "JP" : "US")} bad={off("country")} />
+        </Field>
+        <Field id="rq-place" label={f.placeState}>
+          <input id="rq-place" name="place" required maxLength={120} defaultValue={preset?.place ?? ""} placeholder={f.placeStateHint} className="field placeholder:text-mute/70" aria-invalid={off("place")} />
+        </Field>
+        <Field id="rq-start" label={f.startDate}>
+          <input id="rq-start" name="start" type="date" required className="field" aria-invalid={off("start")} />
+        </Field>
+        <NextButton t={f} onClick={next} missing={missing.length > 0} />
+      </div>
+      {/* Step 2: the details, the company and the consent. */}
+      <div className={step === 2 ? "contents" : "hidden"}>
+      <StepHead t={f} n={2} title={t.request.details} />
       <Field id="rq-engagement" label={f.engagement}>
         <Select id="rq-engagement" name="engagement" options={ENGAGEMENTS.map((k) => [k, t.ui.engagements[k]])} placeholder={f.select} bad={bad("engagement")} />
-      </Field>
-      <Field id="rq-country" label={f.country}>
-        <Select id="rq-country" name="country" options={countries} placeholder={f.select} defaultValue={lang === "ja" ? "JP" : "US"} bad={bad("country")} />
-      </Field>
-      <Field id="rq-place" label={f.placeState}>
-        <input id="rq-place" name="place" required maxLength={120} placeholder={f.placeStateHint} className="field placeholder:text-mute/70" aria-invalid={bad("place")} />
-      </Field>
-      <Field id="rq-start" label={f.startDate}>
-        <input id="rq-start" name="start" type="date" required className="field" aria-invalid={bad("start")} />
       </Field>
       <Field id="rq-pay" label={f.pay}>
         <input id="rq-pay" name="pay" maxLength={80} placeholder={f.payHint} className="field placeholder:text-mute/70" />
@@ -398,42 +489,55 @@ export function RequestForm({ lang, t, countries }: { lang: Locale; t: NetText &
       </Field>
       <Consent lang={lang} t={f} bad={bad} />
       <Submit t={f} label={t.request.submit} status={status} />
+      <BackButton t={f} onClick={() => setStep(1)} />
+      </div>
     </form>
   );
 }
 
 /** Facility owners and general contractors: a commercial project for subcontractor sourcing (/post-project). */
-export function CommercialProjectForm({ lang, t, countries }: { lang: Locale; t: NetText & { postProject: Dict["postProject"] }; countries: [string, string][] }) {
-  const { status, submit, bad } = useSubmit("/api/inquiries");
+export function CommercialProjectForm({ lang, t, countries }: { lang: Locale; t: NetText & { postProject: Dict["postProject"]; selector: Dict["selector"] }; countries: [string, string][] }) {
+  const { status, submit, bad, invalid } = useSubmit("/api/inquiries");
+  const formRef = useRef<HTMLFormElement>(null);
+  const preset = usePreset(t.selector.places);
+  const { step, setStep, next, missing } = useTwoSteps(formRef, PROJECT_STEP_ONE, invalid);
   const f = t.form;
+  const off = (name: string) => (missing.includes(name) || bad(name) ? true : undefined);
   if (status === "done") return <Done title={t.postProject.sentTitle} text={t.postProject.sent} />;
   return (
-    <form onSubmit={submit} noValidate className="grid gap-4 sm:grid-cols-2">
+    <form ref={formRef} onSubmit={submit} noValidate className="grid scroll-mt-24 gap-4 sm:grid-cols-2">
       <input type="hidden" name="lang" value={lang} />
       <input type="hidden" name="kind" value="project" />
       <Honeypot />
-      <Legend>{t.postProject.project}</Legend>
-      <Field id="pj-facility" label={f.facility}>
-        <Select id="pj-facility" name="facility" options={FACILITIES.map((k) => [k, t.ui.facilities[k]])} placeholder={f.select} bad={bad("facility")} />
-      </Field>
-      <Field id="pj-size" label={f.size}>
-        <Select id="pj-size" name="size" options={[...sizeOptions(t.ui), ["unknown", t.ui.projectSizes.unknown]]} placeholder={f.select} bad={bad("size")} />
-      </Field>
-      <Pills name="trades" legend={f.tradesNeeded} options={sourcingOptions(t.ui)} multiple bad={bad("trades")} />
+      {/* Step 1: what, how big, which trades, where and when. Hidden fields still post with the form. */}
+      <div key={preset ? "preset" : "plain"} className={step === 1 ? "contents" : "hidden"}>
+        <StepHead t={f} n={1} title={t.postProject.project} />
+        <Field id="pj-facility" label={f.facility}>
+          <Select id="pj-facility" name="facility" options={FACILITIES.map((k) => [k, t.ui.facilities[k]])} placeholder={f.select} bad={off("facility")} />
+        </Field>
+        <Field id="pj-size" label={f.size}>
+          <Select id="pj-size" name="size" options={[...sizeOptions(t.ui), ["unknown", t.ui.projectSizes.unknown]]} placeholder={f.select} bad={off("size")} />
+        </Field>
+        <Pills name="trades" legend={f.tradesNeeded} options={sourcingOptions(t.ui)} multiple bad={off("trades")} defaults={preset?.trade ? [preset.trade] : []} />
+        <Field id="pj-country" label={f.country}>
+          <Select id="pj-country" name="country" options={countries} placeholder={f.select} defaultValue={preset?.country || (lang === "ja" ? "JP" : "US")} bad={off("country")} />
+        </Field>
+        <Field id="pj-place" label={f.placeState}>
+          <input id="pj-place" name="place" required maxLength={120} defaultValue={preset?.place ?? ""} placeholder={f.placeStateHint} className="field placeholder:text-mute/70" aria-invalid={off("place")} />
+        </Field>
+        <Field id="pj-start" label={f.start}>
+          <Select id="pj-start" name="start" options={STARTS.map((k) => [k, t.ui.starts[k]])} placeholder={f.select} bad={off("start")} />
+        </Field>
+        <NextButton t={f} onClick={next} missing={missing.length > 0} />
+      </div>
+      {/* Step 2: the scope, readiness, the person and the consent. */}
+      <div className={step === 2 ? "contents" : "hidden"}>
+      <StepHead t={f} n={2} title={t.postProject.details} />
       <Field id="pj-title" label={f.projectTitle} wide>
         <input id="pj-title" name="title" required maxLength={140} placeholder={f.projectTitleHint} className="field placeholder:text-mute/70" aria-invalid={bad("title")} />
       </Field>
       <Field id="pj-scope" label={f.scope} wide>
         <textarea id="pj-scope" name="scope" required rows={6} maxLength={4000} placeholder={f.scopeHint} className="field resize-y placeholder:text-mute/70" aria-invalid={bad("scope")} />
-      </Field>
-      <Field id="pj-country" label={f.country}>
-        <Select id="pj-country" name="country" options={countries} placeholder={f.select} defaultValue={lang === "ja" ? "JP" : "US"} bad={bad("country")} />
-      </Field>
-      <Field id="pj-place" label={f.placeState}>
-        <input id="pj-place" name="place" required maxLength={120} placeholder={f.placeStateHint} className="field placeholder:text-mute/70" aria-invalid={bad("place")} />
-      </Field>
-      <Field id="pj-start" label={f.start}>
-        <Select id="pj-start" name="start" options={STARTS.map((k) => [k, t.ui.starts[k]])} placeholder={f.select} bad={bad("start")} />
       </Field>
       <Field id="pj-power" label={f.power}>
         <Select id="pj-power" name="power" options={POWER.map((k) => [k, t.ui.power[k]])} placeholder={f.select} bad={bad("power")} />
@@ -457,6 +561,8 @@ export function CommercialProjectForm({ lang, t, countries }: { lang: Locale; t:
       </Field>
       <Consent lang={lang} t={f} bad={bad} />
       <Submit t={f} label={t.postProject.submit} status={status} />
+      <BackButton t={f} onClick={() => setStep(1)} />
+      </div>
     </form>
   );
 }

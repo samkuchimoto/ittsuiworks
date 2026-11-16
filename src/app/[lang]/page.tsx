@@ -11,6 +11,7 @@ import { LangSwitch } from "@/components/LangSwitch";
 import { LatestJobs } from "@/components/LatestJobs";
 import { Mark } from "@/components/Logo";
 import { Photo } from "@/components/Photo";
+import { QuickSelector } from "@/components/QuickSelector";
 import { Cta, Label, Title } from "@/components/Typo";
 import { collectsSeekers } from "@/lib/config";
 import { countryOptions } from "@/lib/countries";
@@ -115,23 +116,23 @@ export default async function Home({ params }: PageProps<"/[lang]">) {
             </div>
           </div>
 
+          {/* The B2B quick selector (16 Nov 2026): mode, trade, hub, Continue to the matching form, already filled in. */}
           <div className="relative z-10 mx-auto max-w-[1280px] px-4 sm:px-8 lg:-mt-11">
-            <ul className="grid divide-y divide-line rounded-xl bg-white shadow-[0_28px_60px_-32px_rgb(15_39_71/0.5)] ring-1 ring-navy/8 sm:grid-cols-3 sm:divide-x sm:divide-y-0">
+            <QuickSelector lang={lang} t={t.selector} />
+            <ul className="mt-4 flex flex-wrap gap-x-7 gap-y-2 px-1">
               {t.facts.map((fact) => (
-                <li key={fact} className="flex items-center gap-4 px-6 py-5">
-                  <span className="grid size-9 shrink-0 place-items-center rounded-full bg-sky text-navy">
-                    <CheckIcon className="size-[18px]" />
+                <li key={fact} className="flex items-center gap-2 text-[14.5px] font-semibold text-navy">
+                  <span className="grid size-5 shrink-0 place-items-center rounded-full bg-sky text-navy">
+                    <CheckIcon className="size-3" />
                   </span>
-                  <span className="text-[15.5px] font-semibold text-navy">{fact}</span>
+                  {fact}
                 </li>
               ))}
             </ul>
           </div>
         </section>
 
-        {/* Live jobs, loaded after the page; hidden when there are none. */}
-        <LatestJobs lang={lang} t={{ latest: t.latest, ui: t.ui }} />
-
+        {/* B2B value first (16 Nov 2026): the bottleneck, the two ways to work with us, the three industries; jobs after. */}
         {/* The bottleneck, from first principles: projects are signed with money and finished by hands. */}
         <section id="bottleneck" aria-labelledby="bottleneck-title" className="relative mt-16 overflow-hidden bg-navy-deep py-20 text-white lg:mt-24 lg:py-28">
           <div className="absolute inset-x-0 top-0 h-[92svh] max-h-[980px] min-h-[620px]">
@@ -310,6 +311,9 @@ export default async function Home({ params }: PageProps<"/[lang]">) {
           </div>
         </section>
 
+        {/* Live demand and open roles, after the B2B sections, with a filter strip; loaded after the page, hidden when there are none. */}
+        <LatestJobs lang={lang} t={{ latest: t.latest, ui: t.ui }} />
+
         {/* The story film: night shift to morning meeting. */}
         <section aria-labelledby="film-title" className="relative bg-navy-deep text-white">
           <div className="relative h-[72svh] max-h-[800px] min-h-[460px] overflow-hidden">
@@ -326,25 +330,38 @@ export default async function Home({ params }: PageProps<"/[lang]">) {
           </div>
         </section>
 
-        {/* Fees: free for technicians and partners; placement and referral fees agreed in writing, never charged on the site. */}
+        {/* Fees (16 Nov 2026): three B2B tiers, $0 upfront for everyone; placement and brokerage fees only on results, in writing. */}
         <section id="fees" aria-labelledby="fees-title" className="bg-sky py-20 lg:py-24">
-          <div className="mx-auto grid max-w-[1280px] gap-10 px-4 sm:px-8 lg:grid-cols-[1fr_2fr] lg:items-center lg:gap-14">
-            <div>
-              <Label>{t.fees.label}</Label>
-              <Title id="fees-title">{t.fees.title}</Title>
-              <Cta href={at("/request")} className="mt-8">
-                {t.fees.cta}
-              </Cta>
+          <div className="mx-auto max-w-[1280px] px-4 sm:px-8">
+            <div className="grid gap-6 lg:grid-cols-2 lg:items-end">
+              <div>
+                <Label>{t.fees.label}</Label>
+                <Title id="fees-title">{t.fees.title}</Title>
+              </div>
+              <p className="max-w-[36rem] text-[17px] leading-relaxed text-mute lg:justify-self-end">{t.fees.intro}</p>
             </div>
-            <ul className="grid gap-4 sm:grid-cols-3">
+            <ul className="mt-12 grid gap-5 lg:grid-cols-3">
               {t.fees.items.map((fee, i) => (
-                <li key={fee.big} data-reveal style={delay(i)} className="rounded-2xl bg-white p-7 ring-1 ring-navy/8 lg:p-8">
-                  <p className="font-display text-[38px] leading-none text-navy lg:text-[42px]">{fee.big}</p>
+                <li
+                  key={fee.tag}
+                  data-reveal
+                  style={delay(i)}
+                  className={`flex flex-col rounded-2xl p-7 lg:p-8 ${i === 0 ? "bg-white ring-1 ring-navy/8" : "bg-navy text-white shadow-[0_40px_80px_-44px_rgb(10_27_51/0.9)]"}`}
+                >
+                  <p className={`text-[12.5px] font-bold uppercase tracking-[0.14em] ${i === 0 ? "text-orange" : "text-amber"}`}>{fee.tag}</p>
+                  <p className={`font-display mt-5 text-[38px] leading-none lg:text-[44px] ${i === 0 ? "text-navy" : ""}`}>{fee.big}</p>
+                  <p className={`mt-2 text-[15.5px] font-semibold ${i === 0 ? "text-navy" : "text-white/90"}`}>{fee.sub}</p>
                   <span aria-hidden="true" className="mt-5 block h-0.5 w-10 bg-orange" />
-                  <p className="mt-5 text-[15px] leading-relaxed text-ink/80">{fee.text}</p>
+                  <p className={`mt-5 text-[15px] leading-relaxed ${i === 0 ? "text-ink/80" : "text-white/80"}`}>{fee.text}</p>
                 </li>
               ))}
             </ul>
+            <div className="mt-10 flex flex-wrap gap-3">
+              <Cta href={at("/request")}>{t.fees.cta}</Cta>
+              <Cta href={at("/post-project")} tone="navy">
+                {t.hero.secondary}
+              </Cta>
+            </div>
           </div>
         </section>
 

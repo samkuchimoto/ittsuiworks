@@ -37,7 +37,7 @@ export default async function PostProject({ params }: PageProps<"/[lang]/post-pr
           </div>
         </aside>
         <Card>
-          <CommercialProjectForm lang={lang} t={{ form: t.form, ui: t.ui, postProject: t.postProject }} countries={countryOptions(lang)} />
+          <CommercialProjectForm lang={lang} t={{ form: t.form, ui: t.ui, postProject: t.postProject, selector: t.selector }} countries={countryOptions(lang)} />
         </Card>
       </section>
     </Shell>

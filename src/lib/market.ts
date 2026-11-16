@@ -341,7 +341,15 @@ const LIVE = `j.status = 'live' AND j.expires_at > now()`;
 const JOB_SELECT = `SELECT j.*, c.name AS company_name, c.website AS company_website FROM jobs j JOIN companies c ON c.id = j.company_id`;
 const FEATURED_FIRST = `COALESCE(j.sponsored_until > now(), false) DESC, j.published_at DESC`;
 
-export type JobFilter = { trade?: string; country?: string; q?: string; page?: number; perPage?: number };
+/**
+ * titleWord: a word in the job title (the home page's "Electrical" filter: electrical work has no trade of its own).
+ * txfl: jobs placed in Texas or Florida (the home page's "Texas & Florida" filter); places are free text, so the city and
+ * the title are matched on the state names and codes and the large cities. Both take fixed server values only.
+ */
+export type JobFilter = { trade?: string; country?: string; q?: string; page?: number; perPage?: number; titleWord?: "electric"; txfl?: boolean };
+
+const TXFL = `((j.city || ' ' || j.title) ~ '\\m(TX|FL)\\M'
+  OR (j.city || ' ' || j.title) ~* '\\m(texas|florida|houston|dallas|austin|san antonio|fort worth|el paso|miami|tampa|orlando|jacksonville)\\M')`;
 
 export async function listJobs(filter: JobFilter = {}): Promise<{ jobs: Job[]; total: number }> {
   if (!hasDatabase()) return { jobs: [], total: 0 };
@@ -349,9 +357,10 @@ export async function listJobs(filter: JobFilter = {}): Promise<{ jobs: Job[]; t
   const page = Math.max(1, filter.page ?? 1);
   const like = filter.q ? `%${filter.q.replace(/[\\%_]/g, (c) => `\\${c}`)}%` : null;
   const where = `${LIVE} AND ($1::text IS NULL OR j.trade = $1) AND ($2::text IS NULL OR j.country = $2)
-    AND ($3::text IS NULL OR j.title ILIKE $3 OR j.city ILIKE $3 OR j.certifications ILIKE $3 OR j.description ILIKE $3 OR c.name ILIKE $3)`;
-  const params = [filter.trade || null, filter.country || null, like];
-  const jobs = await query<Job>(`${JOB_SELECT} WHERE ${where} ORDER BY ${FEATURED_FIRST} LIMIT $4 OFFSET $5`, [...params, per, (page - 1) * per]);
+    AND ($3::text IS NULL OR j.title ILIKE $3 OR j.city ILIKE $3 OR j.certifications ILIKE $3 OR j.description ILIKE $3 OR c.name ILIKE $3)
+    AND ($4::text IS NULL OR j.title ILIKE $4) AND (NOT $5::boolean OR ${TXFL})`;
+  const params = [filter.trade || null, filter.country || null, like, filter.titleWord ? `%${filter.titleWord}%` : null, filter.txfl === true];
+  const jobs = await query<Job>(`${JOB_SELECT} WHERE ${where} ORDER BY ${FEATURED_FIRST} LIMIT $6 OFFSET $7`, [...params, per, (page - 1) * per]);
   const [{ count }] = await query<{ count: string }>(`SELECT count(*) FROM jobs j JOIN companies c ON c.id = j.company_id WHERE ${where}`, params);
   return { jobs, total: Number(count) };
 }

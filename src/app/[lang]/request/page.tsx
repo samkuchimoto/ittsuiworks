@@ -38,7 +38,7 @@ export default async function Request({ params }: PageProps<"/[lang]/request">) 
           <p className="mt-8 border-t border-line pt-5 text-[14px] leading-relaxed text-mute">{t.footer.service}</p>
         </aside>
         <Card>
-          <RequestForm lang={lang} t={{ form: t.form, ui: t.ui, request: t.request }} countries={countryOptions(lang)} />
+          <RequestForm lang={lang} t={{ form: t.form, ui: t.ui, request: t.request, selector: t.selector }} countries={countryOptions(lang)} />
         </Card>
       </section>
     </Shell>
