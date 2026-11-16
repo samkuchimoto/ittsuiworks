@@ -18,10 +18,11 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   };
   const pages = [
     ...both("/", 1),
+    ...both("/request", 0.95),
+    ...both("/post-project", 0.9),
+    ...both("/join", 0.9),
     ...both("/jobs", 0.9),
-    ...both("/post-job", 0.8),
-    ...both("/post-project", 0.8),
-    ...both("/companies", 0.8),
+    ...both("/post-job", 0.6),
     ...both("/terms", 0.2),
     ...both("/privacy", 0.2),
   ];

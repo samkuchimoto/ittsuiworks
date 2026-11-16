@@ -6,7 +6,7 @@ import { Wordmark } from "./Logo";
 /** "#faq" lands on the home page section; "/jobs" is a page in the current language. */
 export const linkFor = (lang: Locale, href: string, onHome: boolean) => (href.startsWith("#") ? (onHome ? href : `${pathFor(lang)}${href}`) : pathFor(lang, href));
 
-/** The white corporate bar: one line saying what we do, the logo, two links and the navy "Post a job" button. */
+/** The white corporate bar: one line saying what we do, the logo, two links and the navy "Request Technicians" button. */
 export function TopBar({ lang, t, onHome = true }: { lang: Locale; t: Dict["header"]; onHome?: boolean }) {
   return (
     <header className="bg-white">
@@ -29,7 +29,7 @@ export function TopBar({ lang, t, onHome = true }: { lang: Locale; t: Dict["head
             ))}
           </nav>
           <a
-            href={pathFor(lang, "/post-job")}
+            href={pathFor(lang, t.ctaHref)}
             className="inline-flex items-center gap-2 whitespace-nowrap rounded-md bg-navy px-3 py-3 text-[13.5px] font-semibold text-white shadow-[0_8px_24px_-10px_rgb(15_39_71/0.8)] transition hover:bg-navy-deep sm:gap-2.5 sm:px-6 sm:text-[14.5px]"
           >
             <PlusIcon className="size-[18px]" />

@@ -166,6 +166,39 @@ CREATE TABLE IF NOT EXISTS apply_clicks (
   at timestamptz NOT NULL DEFAULT now()
 );
 CREATE INDEX IF NOT EXISTS apply_clicks_at ON apply_clicks (at);
+-- The sourcing pipeline (16 Nov 2026): talent requests, commercial projects, technician and trade partner applications.
+-- New tables only; nothing above is changed. Stages: lib/pipeline.ts.
+CREATE TABLE IF NOT EXISTS inquiries (
+  id text PRIMARY KEY,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  kind text NOT NULL,
+  source text NOT NULL DEFAULT 'site',
+  name text NOT NULL,
+  email text NOT NULL,
+  phone text NOT NULL DEFAULT '',
+  company text NOT NULL DEFAULT '',
+  country text NOT NULL,
+  place text NOT NULL DEFAULT '',
+  trades text[] NOT NULL DEFAULT '{}',
+  data jsonb NOT NULL DEFAULT '{}',
+  consent_at timestamptz,
+  consent_text text NOT NULL DEFAULT '',
+  stage text NOT NULL DEFAULT 'received',
+  stage_at timestamptz NOT NULL DEFAULT now(),
+  checks jsonb NOT NULL DEFAULT '{}',
+  notes text NOT NULL DEFAULT '',
+  lang text NOT NULL DEFAULT 'en'
+);
+CREATE INDEX IF NOT EXISTS inquiries_kind ON inquiries (kind, stage, created_at DESC);
+CREATE TABLE IF NOT EXISTS inquiry_files (
+  id text PRIMARY KEY,
+  inquiry_id text NOT NULL REFERENCES inquiries(id) ON DELETE CASCADE,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  name text NOT NULL,
+  type text NOT NULL,
+  size integer NOT NULL,
+  data bytea NOT NULL
+);
 `;
 
 function ensureSchema(): Promise<void> {

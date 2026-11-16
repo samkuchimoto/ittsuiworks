@@ -2,7 +2,7 @@
 
 import { useState, type FormEvent, type ReactNode } from "react";
 import type { Dict } from "@/content";
-import { BUDGETS, CURRENCIES, EMPLOYMENT, PAY_UNITS, POWER, STARTS, TRADES } from "@/lib/config";
+import { CREW_SIZES, CURRENCIES, EMPLOYMENT, ENGAGEMENTS, EXPERIENCE, HEADCOUNTS, PAY_UNITS, POWER, PROJECT_SIZES, SOURCING_TRADES, STARTS, TRADES } from "@/lib/config";
 import { currencyFor } from "@/lib/countries";
 import { pathFor, type Locale } from "@/lib/site";
 import { ArrowIcon, CheckIcon } from "./Icons";
@@ -312,74 +312,148 @@ export function AlertForm({ lang, t, countries, trade = "" }: { lang: Locale; t:
   );
 }
 
-// ------------------------------------------------------------------ post a project
+// ------------------------------------------------------------------ the sourcing network (16 Nov 2026)
 
-export function ProjectForm({ lang, t, countries }: { lang: Locale; t: { form: Dict["form"]; ui: Dict["ui"]; postProject: Dict["postProject"] }; countries: [string, string][] }) {
-  const { status, submit, bad } = useSubmit("/api/projects");
-  const [email, setEmail] = useState("");
+const FACILITIES = ["datacenter", "industrial", "commercial", "marine", "other"] as const;
+const pill =
+  "inline-flex rounded-full border border-line px-4 py-2 text-[14.5px] text-ink transition peer-checked:border-navy peer-checked:bg-navy peer-checked:text-white peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-orange";
+
+/** Pick one or more (checkboxes) or exactly one (radios), shown as pills. */
+function Pills({ name, legend, options, multiple, bad }: { name: string; legend: string; options: [string, string][]; multiple?: boolean; bad?: true }) {
+  return (
+    <fieldset className="sm:col-span-2">
+      <legend className="mb-2 text-[14px] font-semibold text-navy">{legend}</legend>
+      <div className="flex flex-wrap gap-2" aria-invalid={bad}>
+        {options.map(([value, label]) => (
+          <label key={value} className="cursor-pointer">
+            <input type={multiple ? "checkbox" : "radio"} name={name} value={value} required={!multiple} className="peer sr-only" />
+            <span className={pill}>{label}</span>
+          </label>
+        ))}
+      </div>
+    </fieldset>
+  );
+}
+
+const sourcingOptions = (t: Dict["ui"]) => SOURCING_TRADES.map((k) => [k, t.sourcingTrades[k]] as [string, string]);
+const sizeOptions = (t: Dict["ui"]) => PROJECT_SIZES.map((k) => [k, t.projectSizes[k]] as [string, string]);
+const ynOptions = (t: Dict["ui"]): [string, string][] => [
+  ["yes", t.yes],
+  ["no", t.no],
+];
+
+type NetText = { form: Dict["form"]; ui: Dict["ui"] };
+
+/** Employers: a recruiting and staffing request (/request). */
+export function RequestForm({ lang, t, countries }: { lang: Locale; t: NetText & { request: Dict["request"] }; countries: [string, string][] }) {
+  const { status, submit, bad } = useSubmit("/api/inquiries");
   const f = t.form;
-  if (status === "done") return <Done title={t.postProject.sentTitle} text={fillIn(t.postProject.sent, { email })} />;
+  if (status === "done") return <Done title={t.request.sentTitle} text={t.request.sent} />;
   return (
     <form onSubmit={submit} noValidate className="grid gap-4 sm:grid-cols-2">
       <input type="hidden" name="lang" value={lang} />
+      <input type="hidden" name="kind" value="talent_request" />
+      <Honeypot />
+      <Legend>{t.request.role}</Legend>
+      <Pills name="trades" legend={f.tradesNeeded} options={sourcingOptions(t.ui)} multiple bad={bad("trades")} />
+      <Field id="rq-role" label={f.roleTitle} wide>
+        <input id="rq-role" name="role" required maxLength={80} placeholder={f.roleTitleHint} className="field placeholder:text-mute/70" aria-invalid={bad("role")} />
+      </Field>
+      <Field id="rq-headcount" label={f.headcount}>
+        <Select id="rq-headcount" name="headcount" options={HEADCOUNTS.map((k) => [k, `${k} ${t.ui.people}`])} placeholder={f.select} bad={bad("headcount")} />
+      </Field>
+      <Field id="rq-engagement" label={f.engagement}>
+        <Select id="rq-engagement" name="engagement" options={ENGAGEMENTS.map((k) => [k, t.ui.engagements[k]])} placeholder={f.select} bad={bad("engagement")} />
+      </Field>
+      <Field id="rq-country" label={f.country}>
+        <Select id="rq-country" name="country" options={countries} placeholder={f.select} defaultValue={lang === "ja" ? "JP" : "US"} bad={bad("country")} />
+      </Field>
+      <Field id="rq-place" label={f.placeState}>
+        <input id="rq-place" name="place" required maxLength={120} placeholder={f.placeStateHint} className="field placeholder:text-mute/70" aria-invalid={bad("place")} />
+      </Field>
+      <Field id="rq-start" label={f.startDate}>
+        <input id="rq-start" name="start" type="date" required className="field" aria-invalid={bad("start")} />
+      </Field>
+      <Field id="rq-pay" label={f.pay}>
+        <input id="rq-pay" name="pay" maxLength={80} placeholder={f.payHint} className="field placeholder:text-mute/70" />
+      </Field>
+      <Field id="rq-work" label={f.work} wide>
+        <textarea id="rq-work" name="description" required rows={5} maxLength={4000} placeholder={f.workHint} className="field resize-y placeholder:text-mute/70" aria-invalid={bad("description")} />
+      </Field>
+      <Field id="rq-licenses" label={f.licensesRequired} wide>
+        <input id="rq-licenses" name="licenses" maxLength={400} placeholder={f.certificationsHint} className="field placeholder:text-mute/70" />
+      </Field>
+      <Legend>{t.request.company}</Legend>
+      <Field id="rq-company" label={f.company}>
+        <input id="rq-company" name="company" required maxLength={120} autoComplete="organization" className="field" aria-invalid={bad("company")} />
+      </Field>
+      <Field id="rq-name" label={f.name}>
+        <input id="rq-name" name="name" required maxLength={100} autoComplete="name" className="field" aria-invalid={bad("name")} />
+      </Field>
+      <Field id="rq-email" label={f.workEmail}>
+        <input id="rq-email" name="email" type="email" required maxLength={120} autoComplete="email" className="field" aria-invalid={bad("email")} />
+      </Field>
+      <Field id="rq-phone" label={f.phone}>
+        <input id="rq-phone" name="phone" type="tel" maxLength={40} autoComplete="tel" className="field" />
+      </Field>
+      <Consent lang={lang} t={f} bad={bad} />
+      <Submit t={f} label={t.request.submit} status={status} />
+    </form>
+  );
+}
+
+/** Facility owners and general contractors: a commercial project for subcontractor sourcing (/post-project). */
+export function CommercialProjectForm({ lang, t, countries }: { lang: Locale; t: NetText & { postProject: Dict["postProject"] }; countries: [string, string][] }) {
+  const { status, submit, bad } = useSubmit("/api/inquiries");
+  const f = t.form;
+  if (status === "done") return <Done title={t.postProject.sentTitle} text={t.postProject.sent} />;
+  return (
+    <form onSubmit={submit} noValidate className="grid gap-4 sm:grid-cols-2">
+      <input type="hidden" name="lang" value={lang} />
+      <input type="hidden" name="kind" value="project" />
       <Honeypot />
       <Legend>{t.postProject.project}</Legend>
-      <Field id="project-trade" label={f.trade}>
-        <Select id="project-trade" name="trade" options={tradeOptions(t.ui)} placeholder={f.select} bad={bad("trade")} />
+      <Field id="pj-facility" label={f.facility}>
+        <Select id="pj-facility" name="facility" options={FACILITIES.map((k) => [k, t.ui.facilities[k]])} placeholder={f.select} bad={bad("facility")} />
       </Field>
-      <Field id="project-budget" label={f.budget}>
-        <Select id="project-budget" name="budget" options={BUDGETS.map((k) => [k, t.ui.budgets[k]])} placeholder={f.select} bad={bad("budget")} />
+      <Field id="pj-size" label={f.size}>
+        <Select id="pj-size" name="size" options={[...sizeOptions(t.ui), ["unknown", t.ui.projectSizes.unknown]]} placeholder={f.select} bad={bad("size")} />
       </Field>
-      <Field id="project-title" label={f.projectTitle} wide>
-        <input id="project-title" name="title" required maxLength={140} placeholder={f.projectTitleHint} className="field placeholder:text-mute/70" aria-invalid={bad("title")} />
+      <Pills name="trades" legend={f.tradesNeeded} options={sourcingOptions(t.ui)} multiple bad={bad("trades")} />
+      <Field id="pj-title" label={f.projectTitle} wide>
+        <input id="pj-title" name="title" required maxLength={140} placeholder={f.projectTitleHint} className="field placeholder:text-mute/70" aria-invalid={bad("title")} />
       </Field>
-      <Field id="project-scope" label={f.scope} wide>
-        <textarea id="project-scope" name="scope" required rows={6} maxLength={4000} placeholder={f.scopeHint} className="field resize-y placeholder:text-mute/70" aria-invalid={bad("scope")} />
+      <Field id="pj-scope" label={f.scope} wide>
+        <textarea id="pj-scope" name="scope" required rows={6} maxLength={4000} placeholder={f.scopeHint} className="field resize-y placeholder:text-mute/70" aria-invalid={bad("scope")} />
       </Field>
-      <Field id="project-country" label={f.country}>
-        <Select id="project-country" name="country" options={countries} placeholder={f.select} defaultValue={lang === "ja" ? "JP" : ""} bad={bad("country")} />
+      <Field id="pj-country" label={f.country}>
+        <Select id="pj-country" name="country" options={countries} placeholder={f.select} defaultValue={lang === "ja" ? "JP" : "US"} bad={bad("country")} />
       </Field>
-      <Field id="project-city" label={f.city}>
-        <input id="project-city" name="city" required maxLength={80} className="field" aria-invalid={bad("city")} />
+      <Field id="pj-place" label={f.placeState}>
+        <input id="pj-place" name="place" required maxLength={120} placeholder={f.placeStateHint} className="field placeholder:text-mute/70" aria-invalid={bad("place")} />
       </Field>
-      <Field id="project-start" label={f.start}>
-        <Select id="project-start" name="start" options={STARTS.map((k) => [k, t.ui.starts[k]])} placeholder={f.select} bad={bad("start")} />
+      <Field id="pj-start" label={f.start}>
+        <Select id="pj-start" name="start" options={STARTS.map((k) => [k, t.ui.starts[k]])} placeholder={f.select} bad={bad("start")} />
       </Field>
-      <Field id="project-power" label={f.power}>
-        <Select id="project-power" name="power" options={POWER.map((k) => [k, t.ui.power[k]])} placeholder={f.select} bad={bad("power")} />
+      <Field id="pj-power" label={f.power}>
+        <Select id="pj-power" name="power" options={POWER.map((k) => [k, t.ui.power[k]])} placeholder={f.select} bad={bad("power")} />
       </Field>
-      <fieldset className="sm:col-span-2">
-        <legend className="mb-2 text-[14px] font-semibold text-navy">{f.budgetApproved}</legend>
-        <div className="flex flex-wrap gap-2" aria-invalid={bad("budget_approved")}>
-          {[
-            ["yes", t.ui.yes],
-            ["no", t.ui.no],
-          ].map(([value, label]) => (
-            <label key={value} className="cursor-pointer">
-              <input type="radio" name="budget_approved" value={value} required className="peer sr-only" />
-              <span className="inline-flex rounded-full border border-line px-5 py-2 text-[14.5px] text-ink transition peer-checked:border-navy peer-checked:bg-navy peer-checked:text-white peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-orange">
-                {label}
-              </span>
-            </label>
-          ))}
-        </div>
-      </fieldset>
-
+      <Pills name="budget_approved" legend={f.budgetApproved} options={ynOptions(t.ui)} bad={bad("budget_approved")} />
       <Legend>{t.postProject.you}</Legend>
-      <Field id="project-name" label={f.name}>
-        <input id="project-name" name="name" required maxLength={100} autoComplete="name" className="field" aria-invalid={bad("name")} />
+      <Field id="pj-company" label={f.company}>
+        <input id="pj-company" name="company" required maxLength={120} autoComplete="organization" className="field" aria-invalid={bad("company")} />
       </Field>
-      <Field id="project-role" label={f.role}>
-        <input id="project-role" name="role" required maxLength={80} placeholder={f.roleHint} autoComplete="organization-title" className="field placeholder:text-mute/70" aria-invalid={bad("role")} />
+      <Field id="pj-name" label={f.name}>
+        <input id="pj-name" name="name" required maxLength={100} autoComplete="name" className="field" aria-invalid={bad("name")} />
       </Field>
-      <Field id="project-company" label={f.company}>
-        <input id="project-company" name="company" required maxLength={120} autoComplete="organization" className="field" aria-invalid={bad("company")} />
+      <Field id="pj-role" label={f.role}>
+        <input id="pj-role" name="role" required maxLength={80} placeholder={f.roleHint} autoComplete="organization-title" className="field placeholder:text-mute/70" aria-invalid={bad("role")} />
       </Field>
-      <Field id="project-email" label={f.workEmail}>
-        <input id="project-email" name="email" type="email" required maxLength={120} autoComplete="email" className="field" aria-invalid={bad("email")} onChange={(e) => setEmail(e.target.value)} />
+      <Field id="pj-email" label={f.workEmail}>
+        <input id="pj-email" name="email" type="email" required maxLength={120} autoComplete="email" className="field" aria-invalid={bad("email")} />
       </Field>
-      <Field id="project-phone" label={f.phone}>
-        <input id="project-phone" name="phone" type="tel" maxLength={40} autoComplete="tel" className="field" />
+      <Field id="pj-phone" label={f.phone}>
+        <input id="pj-phone" name="phone" type="tel" maxLength={40} autoComplete="tel" className="field" />
       </Field>
       <Consent lang={lang} t={f} bad={bad} />
       <Submit t={f} label={t.postProject.submit} status={status} />
@@ -387,51 +461,101 @@ export function ProjectForm({ lang, t, countries }: { lang: Locale; t: { form: D
   );
 }
 
-// ------------------------------------------------------------------ company sign-up
-
-export function CompanyForm({ lang, t, countries }: { lang: Locale; t: { form: Dict["form"]; ui: Dict["ui"]; companies: Dict["companies"] }; countries: [string, string][] }) {
-  const { status, submit, bad } = useSubmit("/api/companies");
-  const [email, setEmail] = useState("");
+/** Path A: an individual technician (/join). No Google profile or reviews asked: that rule is for companies only. */
+export function TechnicianForm({ lang, t, countries }: { lang: Locale; t: NetText & { join: Dict["join"] }; countries: [string, string][] }) {
+  const { status, submit, bad } = useSubmit("/api/inquiries");
   const f = t.form;
-  if (status === "done") return <Done title={t.companies.sentTitle} text={fillIn(t.companies.sent, { email })} />;
+  const j = t.join.tech;
+  if (status === "done") return <Done title={j.sentTitle} text={j.sent} />;
+  return (
+    <form onSubmit={submit} noValidate encType="multipart/form-data" className="grid gap-4 sm:grid-cols-2">
+      <input type="hidden" name="lang" value={lang} />
+      <input type="hidden" name="kind" value="technician" />
+      <Honeypot />
+      <Field id="tc-name" label={f.name}>
+        <input id="tc-name" name="name" required maxLength={100} autoComplete="name" className="field" aria-invalid={bad("name")} />
+      </Field>
+      <Field id="tc-email" label={f.email}>
+        <input id="tc-email" name="email" type="email" required maxLength={120} autoComplete="email" className="field" aria-invalid={bad("email")} />
+      </Field>
+      <Field id="tc-phone" label={f.phoneWhatsApp}>
+        <input id="tc-phone" name="phone" type="tel" required maxLength={40} autoComplete="tel" className="field" aria-invalid={bad("phone")} />
+      </Field>
+      <Field id="tc-country" label={f.country}>
+        <Select id="tc-country" name="country" options={countries} placeholder={f.select} defaultValue="US" bad={bad("country")} />
+      </Field>
+      <Field id="tc-place" label={f.placeState} wide>
+        <input id="tc-place" name="place" required maxLength={120} placeholder={f.placeStateHint} autoComplete="address-level2" className="field placeholder:text-mute/70" aria-invalid={bad("place")} />
+      </Field>
+      <Pills name="trade" legend={f.primaryTrade} options={sourcingOptions(t.ui)} bad={bad("trade")} />
+      <Field id="tc-licenses" label={f.licensesHeld} wide>
+        <textarea id="tc-licenses" name="licenses" required rows={3} maxLength={600} placeholder={f.licensesHeldHint} className="field resize-y placeholder:text-mute/70" aria-invalid={bad("licenses")} />
+      </Field>
+      <Field id="tc-years" label={f.yearsCommercial}>
+        <Select id="tc-years" name="years" options={EXPERIENCE.map((k) => [k, `${k} ${t.ui.yearsSuffix}`])} placeholder={f.select} bad={bad("years")} />
+      </Field>
+      <Field id="tc-rate" label={f.rate}>
+        <input id="tc-rate" name="rate" required maxLength={60} placeholder={f.rateHint} className="field placeholder:text-mute/70" aria-invalid={bad("rate")} />
+      </Field>
+      <Field id="tc-available" label={f.available}>
+        <input id="tc-available" name="available" type="date" required className="field" aria-invalid={bad("available")} />
+      </Field>
+      <Field id="tc-file" label={f.file}>
+        <input id="tc-file" name="file" type="file" accept=".pdf,.jpg,.jpeg,.png,.heic,.doc,.docx" className="field file:mr-3 file:rounded file:border-0 file:bg-sky file:px-3 file:py-1.5 file:text-navy" aria-invalid={bad("file")} />
+        <p className="mt-1.5 text-[13px] text-mute">{f.fileHint}</p>
+      </Field>
+      <label className="flex items-start gap-3 text-[14.5px] text-ink sm:col-span-2">
+        <input type="checkbox" name="consent_profile" value="yes" required className="mt-1 size-4 accent-navy" aria-invalid={bad("consent_profile")} />
+        <span>{j.consentProfile}</span>
+      </label>
+      <Consent lang={lang} t={f} bad={bad} />
+      <Submit t={f} label={j.submit} status={status} />
+    </form>
+  );
+}
+
+/** Path B: a licensed subcontractor or trade company (/join#partner). */
+export function PartnerForm({ lang, t, countries }: { lang: Locale; t: NetText & { join: Dict["join"] }; countries: [string, string][] }) {
+  const { status, submit, bad } = useSubmit("/api/inquiries");
+  const f = t.form;
+  const j = t.join.partner;
+  if (status === "done") return <Done title={j.sentTitle} text={j.sent} />;
   return (
     <form onSubmit={submit} noValidate className="grid gap-4 sm:grid-cols-2">
       <input type="hidden" name="lang" value={lang} />
+      <input type="hidden" name="kind" value="partner" />
       <Honeypot />
-      <Field id="co-company" label={f.company}>
-        <input id="co-company" name="company" required maxLength={120} autoComplete="organization" className="field" aria-invalid={bad("company")} />
+      <Field id="pt-company" label={f.companyName}>
+        <input id="pt-company" name="company" required maxLength={120} autoComplete="organization" className="field" aria-invalid={bad("company")} />
       </Field>
-      <Field id="co-website" label={f.website}>
-        <input id="co-website" name="site" maxLength={200} inputMode="url" autoComplete="url" className="field" aria-invalid={bad("site")} />
+      <Field id="pt-name" label={f.contactName}>
+        <input id="pt-name" name="name" required maxLength={100} autoComplete="name" className="field" aria-invalid={bad("name")} />
       </Field>
-      <Field id="co-name" label={f.name}>
-        <input id="co-name" name="name" required maxLength={100} autoComplete="name" className="field" aria-invalid={bad("name")} />
+      <Field id="pt-email" label={f.workEmail}>
+        <input id="pt-email" name="email" type="email" required maxLength={120} autoComplete="email" className="field" aria-invalid={bad("email")} />
       </Field>
-      <Field id="co-email" label={f.workEmail}>
-        <input id="co-email" name="email" type="email" required maxLength={120} autoComplete="email" className="field" aria-invalid={bad("email")} onChange={(e) => setEmail(e.target.value)} />
+      <Field id="pt-phone" label={f.phoneRequired}>
+        <input id="pt-phone" name="phone" type="tel" required maxLength={40} autoComplete="tel" className="field" aria-invalid={bad("phone")} />
       </Field>
-      <Field id="co-country" label={f.country}>
-        <Select id="co-country" name="country" options={countries} placeholder={f.select} defaultValue={lang === "ja" ? "JP" : ""} bad={bad("country")} />
+      <Field id="pt-country" label={f.country}>
+        <Select id="pt-country" name="country" options={countries} placeholder={f.select} defaultValue={lang === "ja" ? "JP" : "US"} bad={bad("country")} />
       </Field>
-      <fieldset className="sm:col-span-2">
-        <legend className="mb-2 text-[14px] font-semibold text-navy">{f.trades}</legend>
-        <div className="flex flex-wrap gap-2" aria-invalid={bad("trades")}>
-          {TRADES.map((k) => (
-            <label key={k} className="cursor-pointer">
-              <input type="checkbox" name="trades" value={k} className="peer sr-only" />
-              <span className="inline-flex rounded-full border border-line px-4 py-2 text-[14.5px] text-ink transition peer-checked:border-navy peer-checked:bg-navy peer-checked:text-white peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-orange">
-                {t.ui.trades[k]}
-              </span>
-            </label>
-          ))}
-        </div>
-      </fieldset>
-      <label className="flex items-start gap-3 text-[14.5px] text-ink sm:col-span-2">
-        <input type="checkbox" name="abroad" value="yes" className="mt-1 size-4 accent-navy" />
-        <span>{f.abroad}</span>
-      </label>
+      <Field id="pt-license" label={f.stateLicense}>
+        <input id="pt-license" name="license" required maxLength={80} className="field" aria-invalid={bad("license")} />
+      </Field>
+      <Pills name="insurance" legend={f.insurance} options={ynOptions(t.ui)} bad={bad("insurance")} />
+      <Field id="pt-crew" label={f.crew}>
+        <Select id="pt-crew" name="crew" options={CREW_SIZES.map((k) => [k, k])} placeholder={f.select} bad={bad("crew")} />
+      </Field>
+      <Field id="pt-size" label={f.typicalSize}>
+        <Select id="pt-size" name="size" options={sizeOptions(t.ui)} placeholder={f.select} bad={bad("size")} />
+      </Field>
+      <Pills name="trades" legend={f.coreTrades} options={sourcingOptions(t.ui)} multiple bad={bad("trades")} />
+      <Field id="pt-areas" label={f.areas} wide>
+        <input id="pt-areas" name="areas" required maxLength={300} placeholder={f.areasHint} className="field placeholder:text-mute/70" aria-invalid={bad("areas")} />
+      </Field>
       <Consent lang={lang} t={f} bad={bad} />
-      <Submit t={f} label={t.companies.submit} status={status} />
+      <Submit t={f} label={j.submit} status={status} />
     </form>
   );
 }

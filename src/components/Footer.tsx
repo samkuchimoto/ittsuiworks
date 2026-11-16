@@ -37,6 +37,7 @@ export function Footer({ lang, t, nav, onHome = true }: { lang: Locale; t: Dict[
       <div className="border-t border-white/10">
         <div className="mx-auto flex max-w-[1280px] flex-col gap-2 px-4 py-6 text-[13px] text-white/60 sm:px-8">
           <p className="font-semibold text-white/80">{t.operated}</p>
+          <p>{t.service}</p>
           <p>{t.ai}</p>
           <p>{t.rights}</p>
         </div>

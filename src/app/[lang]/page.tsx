@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import type { CSSProperties } from "react";
 import { notFound } from "next/navigation";
-import { fill, getDictionary } from "@/content";
+import { getDictionary } from "@/content";
 import { AlertForm } from "@/components/Forms";
 import { Film } from "@/components/Film";
 import { Footer } from "@/components/Footer";
@@ -12,9 +12,8 @@ import { LatestJobs } from "@/components/LatestJobs";
 import { Mark } from "@/components/Logo";
 import { Photo } from "@/components/Photo";
 import { Cta, Label, Title } from "@/components/Typo";
-import { PRICING, collectsSeekers, paymentsOn } from "@/lib/config";
+import { collectsSeekers } from "@/lib/config";
 import { countryOptions } from "@/lib/countries";
-import { money } from "@/lib/format";
 import { alternates } from "@/lib/seo";
 import { BRAND, EMAIL, SITE_URL, isLocale, pathFor } from "@/lib/site";
 
@@ -32,10 +31,6 @@ export default async function Home({ params }: PageProps<"/[lang]">) {
   const t = getDictionary(lang);
   const [heroA, heroB] = t.hero.images;
   const at = (path: string) => pathFor(lang, path);
-  // Prices show only once Samuel has approved them and Stripe is connected.
-  const priced = paymentsOn();
-  const leadPrice = money(PRICING.lead.USD, "USD", lang);
-  const sponsorPrice = money(PRICING.sponsor.USD, "USD", lang);
   // Japanese visitors see job alerts once the MHLW notification is filed (JAPAN_SEEKER_DATA).
   const alertsHere = lang !== "ja" || collectsSeekers("JP");
   const alertCountries = countryOptions(lang).filter(([code]) => collectsSeekers(code));
@@ -67,7 +62,7 @@ export default async function Home({ params }: PageProps<"/[lang]">) {
       <NavBar lang={lang} items={t.nav} />
 
       <main id="top">
-        {/* Hero: bright sky, navy type on the left, the two entrances stacked below, buyers on a third line. */}
+        {/* Hero: navy type on the left; employers and project owners get the two buttons, technicians and partners the link below. */}
         <section aria-labelledby="hero-title" className="relative bg-white">
           <div className="relative overflow-hidden lg:h-[clamp(620px,calc(100svh-150px),800px)]">
             <div className="relative aspect-[16/10] overflow-hidden sm:aspect-[16/8] lg:absolute lg:inset-0 lg:aspect-auto">
@@ -84,7 +79,7 @@ export default async function Home({ params }: PageProps<"/[lang]">) {
             <div className="relative mx-auto max-w-[1280px] px-4 pb-14 sm:px-8 lg:flex lg:h-full lg:items-center lg:pb-10">
               <div className="max-w-[800px]">
                 <p className={`font-display text-[20px] text-navy sm:text-[24px] lg:text-[27px] ${lang === "en" ? "italic" : ""}`}>{t.hero.kicker}</p>
-                <h1 id="hero-title" className="font-display mt-3 text-[44px] leading-[1.04] tracking-[-0.015em] text-navy sm:text-[62px] lg:text-[72px]">
+                <h1 id="hero-title" className="font-display mt-3 text-[34px] leading-[1.08] tracking-[-0.015em] text-navy sm:text-[48px] lg:text-[56px]">
                   {t.hero.title.map((line) => (
                     <span key={line} className="block">
                       {line}
@@ -92,9 +87,9 @@ export default async function Home({ params }: PageProps<"/[lang]">) {
                   ))}
                 </h1>
                 <p className="mt-6 max-w-[580px] text-[17px] leading-[1.75] text-ink/85 lg:text-[18px]">{t.hero.lead}</p>
-                <div className="mt-8 flex flex-col gap-3 sm:max-w-[360px]">
+                <div className="mt-8 flex flex-col gap-3 sm:max-w-[400px]">
                   <a
-                    href={at("/post-job")}
+                    href={at("/request")}
                     className="group flex items-center justify-between gap-4 rounded-lg bg-orange px-6 py-[18px] text-[17px] font-semibold text-white shadow-[0_16px_36px_-14px_rgb(200_70_27/0.85)] transition hover:-translate-y-0.5 hover:bg-orange-deep"
                   >
                     {t.hero.primary}
@@ -103,7 +98,7 @@ export default async function Home({ params }: PageProps<"/[lang]">) {
                     </span>
                   </a>
                   <a
-                    href={at("/jobs")}
+                    href={at("/post-project")}
                     className="group flex items-center justify-between gap-4 rounded-lg bg-navy px-6 py-[18px] text-[17px] font-semibold text-white shadow-[0_16px_36px_-16px_rgb(15_39_71/0.9)] transition hover:-translate-y-0.5 hover:bg-navy-deep"
                   >
                     {t.hero.secondary}
@@ -112,12 +107,10 @@ export default async function Home({ params }: PageProps<"/[lang]">) {
                     </span>
                   </a>
                 </div>
-                <p className="mt-5 text-[15.5px] text-ink/80">
-                  {t.hero.projectQuestion}{" "}
-                  <a href={at("/post-project")} className="font-semibold text-navy underline underline-offset-4 hover:text-orange">
-                    {t.hero.projectLink}
-                  </a>
-                </p>
+                <a href={at("/join")} className="mt-5 inline-flex items-center gap-2 text-[15.5px] font-semibold text-navy underline underline-offset-4 hover:text-orange">
+                  {t.hero.joinLink}
+                  <ArrowIcon className="size-4" />
+                </a>
               </div>
             </div>
           </div>
@@ -195,7 +188,7 @@ export default async function Home({ params }: PageProps<"/[lang]">) {
           </div>
         </section>
 
-        {/* How it works: two pairs (a job and a technician, a project and a company), then the buyer's entrance. */}
+        {/* How it works: two pairs (a role and a technician, a project and a licensed partner), then the way in for technicians and trade companies. */}
         <section id="how" aria-labelledby="how-title" className="relative scroll-mt-16 overflow-hidden bg-sky py-20 lg:py-28">
           <div aria-hidden="true" className="blueprint absolute inset-0 [mask-image:radial-gradient(ellipse_at_center,black_30%,transparent_75%)]" />
           <div className="relative mx-auto max-w-[1280px] px-4 sm:px-8">
@@ -206,8 +199,8 @@ export default async function Home({ params }: PageProps<"/[lang]">) {
             </div>
             <div className="mt-14 grid gap-6 lg:grid-cols-[1fr_128px_1fr] lg:gap-0">
               {[
-                { side: t.how.hire, href: at("/post-job"), dark: true },
-                { side: t.how.win, href: at("/companies"), dark: false },
+                { side: t.how.hire, href: at("/request"), dark: true },
+                { side: t.how.win, href: at("/post-project"), dark: false },
               ].map(({ side, href, dark }, n) => (
                 <div key={side.title} className={n === 1 ? "lg:col-start-3" : ""}>
                   <div
@@ -251,7 +244,7 @@ export default async function Home({ params }: PageProps<"/[lang]">) {
                 <p className="font-display text-[26px] leading-tight text-navy">{t.how.buyer.title}</p>
                 <p className="mt-2 max-w-[44rem] text-[15.5px] leading-relaxed text-ink/80">{t.how.buyer.text}</p>
               </div>
-              <Cta href={at("/post-project")} tone="white" className="shrink-0">
+              <Cta href={at("/join")} tone="white" className="shrink-0">
                 {t.how.buyer.cta}
               </Cta>
             </div>
@@ -333,13 +326,13 @@ export default async function Home({ params }: PageProps<"/[lang]">) {
           </div>
         </section>
 
-        {/* Fees: free to post, pay per lead. Prices appear only once approved and payable. */}
+        {/* Fees: free for technicians and partners; placement and referral fees agreed in writing, never charged on the site. */}
         <section id="fees" aria-labelledby="fees-title" className="bg-sky py-20 lg:py-24">
           <div className="mx-auto grid max-w-[1280px] gap-10 px-4 sm:px-8 lg:grid-cols-[1fr_2fr] lg:items-center lg:gap-14">
             <div>
               <Label>{t.fees.label}</Label>
               <Title id="fees-title">{t.fees.title}</Title>
-              <Cta href={at("/post-job")} className="mt-8">
+              <Cta href={at("/request")} className="mt-8">
                 {t.fees.cta}
               </Cta>
             </div>
@@ -349,8 +342,6 @@ export default async function Home({ params }: PageProps<"/[lang]">) {
                   <p className="font-display text-[38px] leading-none text-navy lg:text-[42px]">{fee.big}</p>
                   <span aria-hidden="true" className="mt-5 block h-0.5 w-10 bg-orange" />
                   <p className="mt-5 text-[15px] leading-relaxed text-ink/80">{fee.text}</p>
-                  {priced && i === 1 && <p className="mt-4 text-[15px] font-bold text-navy">{fill(t.fees.leadPrice, { price: leadPrice })}</p>}
-                  {priced && i === 0 && <p className="mt-4 text-[14px] text-mute">{fill(t.fees.sponsor, { price: sponsorPrice })}</p>}
                 </li>
               ))}
             </ul>
@@ -366,10 +357,18 @@ export default async function Home({ params }: PageProps<"/[lang]">) {
                 {t.technicians.title}
               </Title>
               <p className="mt-5 max-w-[34rem] text-[17px] leading-relaxed text-white/80">{t.technicians.text}</p>
-              <a href={at("/jobs")} className="mt-6 inline-flex items-center gap-2 text-[16px] font-semibold text-amber underline-offset-4 hover:underline">
-                {t.technicians.browse}
-                <ArrowIcon className="size-4" />
-              </a>
+              <div className="mt-6 flex flex-wrap gap-x-8 gap-y-3">
+                {alertsHere && (
+                  <a href={at("/join")} className="inline-flex items-center gap-2 text-[16px] font-semibold text-amber underline-offset-4 hover:underline">
+                    {t.technicians.join}
+                    <ArrowIcon className="size-4" />
+                  </a>
+                )}
+                <a href={at("/jobs")} className="inline-flex items-center gap-2 text-[16px] font-semibold text-white underline-offset-4 hover:underline">
+                  {t.technicians.browse}
+                  <ArrowIcon className="size-4" />
+                </a>
+              </div>
               <Photo name={t.technicians.image.name} alt={t.technicians.image.alt} sizes="(min-width: 1024px) 45vw, 100vw" className="mt-10 aspect-[16/10] w-full rounded-xl object-cover" />
             </div>
             <div data-reveal className="relative rounded-2xl bg-white p-6 text-ink shadow-[0_40px_90px_-40px_rgb(0_0_0/0.6)] sm:p-9 lg:self-center">

@@ -1,5 +1,13 @@
 /**
- * Every rule of the platform in one place. Two models, both proven at scale:
+ * Every rule of the platform in one place.
+ *
+ * Since 16 November 2026 (Samuel): Ittsui Works is a B2B technical recruiting and subcontractor sourcing network.
+ * Employers request technicians, facility owners and general contractors submit commercial projects, technicians and
+ * licensed trade companies apply. Every submission goes into the inquiry pipeline (lib/pipeline.ts); agreements,
+ * state license checks and insurance checks are confirmed by a person before any engagement. Nothing is charged on
+ * the site. The free job board and job alerts stay (they bring technicians).
+ *
+ * Before that, two self-serve models (kept in the code, switched off by PRICING.approved = false):
  *  - Jobs, the Indeed model: companies post jobs for free, technicians apply for free and get new jobs by email.
  *    Companies pay only to feature a job (more reach), never to post one.
  *  - Projects, the Thumbtack / Angi model: buyers post a project for free, it goes to the companies that do that
@@ -46,7 +54,8 @@ export const PROJECT_DAYS = 45;
  * Thumbtack and Angi HVAC leads $15 to $110; Google Local Services HVAC leads about $51.
  */
 export const PRICING = {
-  approved: true,
+  /** OFF since 16 November 2026 (Samuel): no 49 USD leads, no 99 USD featured jobs, no card payment on the site. */
+  approved: false,
   lead: { USD: 49 },
   sponsor: { USD: 99 },
 } as const;
@@ -61,6 +70,21 @@ export const paymentsOn = () => (PRICING.approved || localMock()) && Boolean(pro
  * applicants straight to the employer and the site collects no technician details for Japan.
  */
 export const JAPAN_SEEKER_DATA = false;
+
+/**
+ * The sourcing network (16 November 2026). Trades a request, project, technician or partner can name: the job board's
+ * three trades plus commercial electrical.
+ */
+export const SOURCING_TRADES = ["hvac", "electrical", "datacenter", "marine"] as const;
+export type SourcingTrade = (typeof SOURCING_TRADES)[number];
+/** Typical project size a trade partner takes, and the size of a submitted commercial project (USD). */
+export const PROJECT_SIZES = ["10k50k", "50k250k", "250k"] as const;
+export const ENGAGEMENTS = ["direct_hire", "contract", "contract_to_hire"] as const;
+export const HEADCOUNTS = ["1", "2-5", "6-10", "11-25", "26+"] as const;
+export const EXPERIENCE = ["0-2", "3-5", "6-10", "10+"] as const;
+export const CREW_SIZES = ["1-5", "6-15", "16-50", "51+"] as const;
+/** Résumé or license upload: PDF, image or Word, under Vercel's 4.5 MB request limit. */
+export const UPLOAD = { maxBytes: 4_000_000, types: ["application/pdf", "image/jpeg", "image/png", "image/heic", "application/msword", "application/vnd.openxmlformats-officedocument.wordprocessingml.document"] } as const;
 export const collectsSeekers = (country: string) => country !== "JP" || JAPAN_SEEKER_DATA;
 
 /**

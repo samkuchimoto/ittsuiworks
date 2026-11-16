@@ -5,7 +5,7 @@ import { fill, getDictionary } from "@/content";
 import { jobAction, leadSettingsAction, leaveAction } from "@/app/actions";
 import { Card, Notice, Shell } from "@/components/Shell";
 import { Cta, Label } from "@/components/Typo";
-import { TRADES, paymentsOn } from "@/lib/config";
+import { PRICING, TRADES, paymentsOn } from "@/lib/config";
 import { countryName } from "@/lib/countries";
 import { dateText, money } from "@/lib/format";
 import { accountView, openAccount, sponsorPrice } from "@/lib/market";
@@ -163,6 +163,8 @@ export default async function Account({ params }: PageProps<"/[lang]/account/[to
         </div>
 
         <div className="space-y-10 lg:sticky lg:top-24 lg:self-start">
+          {/* Project leads retired on 16 Nov 2026 (PRICING.approved = false): the section stays hidden. */}
+          {PRICING.approved && (
           <Card>
             <h2 className="font-display text-[28px] text-navy">{a.leads}</h2>
             <p className="mt-3 text-[15px] text-ink/80">
@@ -225,6 +227,7 @@ export default async function Account({ params }: PageProps<"/[lang]/account/[to
               </ul>
             )}
           </Card>
+          )}
 
           <form action={leaveAction} className="rounded-2xl bg-mist p-6 ring-1 ring-line">
             <input type="hidden" name="token" value={company.token} />

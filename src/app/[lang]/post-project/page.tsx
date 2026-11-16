@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { getDictionary } from "@/content";
-import { ProjectForm } from "@/components/Forms";
+import { CommercialProjectForm } from "@/components/Forms";
 import { Card, PageHead, Shell } from "@/components/Shell";
 import { countryOptions } from "@/lib/countries";
 import { alternates } from "@/lib/seo";
@@ -37,7 +37,7 @@ export default async function PostProject({ params }: PageProps<"/[lang]/post-pr
           </div>
         </aside>
         <Card>
-          <ProjectForm lang={lang} t={{ form: t.form, ui: t.ui, postProject: t.postProject }} countries={countryOptions(lang)} />
+          <CommercialProjectForm lang={lang} t={{ form: t.form, ui: t.ui, postProject: t.postProject }} countries={countryOptions(lang)} />
         </Card>
       </section>
     </Shell>

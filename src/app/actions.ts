@@ -85,3 +85,54 @@ export async function adminCloseJobAction(form: FormData) {
   await query(`UPDATE jobs SET status = 'closed' WHERE id = $1`, [read(form, "job", 12)]);
   redirect(`/admin/${read(form, "key", 100)}`);
 }
+
+// ------------------------------------------------------------------ sourcing pipeline (admin)
+
+/** Moves a request, project or application to a stage; lib/pipeline.ts refuses it until every check is ticked. */
+export async function adminStageAction(form: FormData) {
+  if (!adminOk(form)) redirect("/");
+  const { setStage } = await import("@/lib/pipeline");
+  const error = await setStage(read(form, "id", 12), read(form, "stage", 20), form.getAll("checks").map(String), read(form, "note", 500));
+  redirect(`/admin/${read(form, "key", 100)}?msg=${encodeURIComponent(error ?? "Saved.")}#pipeline`);
+}
+
+/**
+ * A technician who answered the three Indeed questions and said yes to question 3 (consent), typed in by Samuel.
+ * Nothing is imported from Indeed automatically. Lands at stage 1 (qualified, verification pending).
+ */
+export async function adminAddCandidateAction(form: FormData) {
+  if (!adminOk(form)) redirect("/");
+  const key = read(form, "key", 100);
+  const back = (msg: string) => redirect(`/admin/${key}?msg=${encodeURIComponent(msg)}#pipeline`);
+  const { createInquiry } = await import("@/lib/pipeline");
+  const { SOURCING_TRADES } = await import("@/lib/config");
+  const email = read(form, "email", 120).toLowerCase();
+  const trade = read(form, "trade", 20);
+  const consentDay = read(form, "consent_day", 10);
+  if (read(form, "consent_yes", 5) !== "yes" || !/^\d{4}-\d{2}-\d{2}$/.test(consentDay)) back("Not added: tick that they said yes to question 3 and give the day they said it.");
+  if (!read(form, "name", 100) || !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email) || !(SOURCING_TRADES as readonly string[]).includes(trade)) back("Not added: name, a valid email and a trade are needed.");
+  await createInquiry({
+    kind: "technician",
+    source: "indeed",
+    stage: "qualified",
+    name: read(form, "name", 100),
+    email,
+    phone: read(form, "phone", 40),
+    company: "",
+    country: "US",
+    place: read(form, "place", 120),
+    trades: [trade],
+    lang: "en",
+    consentText: `Said yes in Indeed messages on ${consentDay} to: "Would you like our recruiting team to present your profile to commercial contractors and facility employers hiring in ${read(form, "place", 120) || "your city"}?"`,
+    consentAt: new Date(`${consentDay}T12:00:00Z`),
+    data: {
+      "Licenses and certifications": read(form, "licenses", 600),
+      "License number for verification": read(form, "license_no", 80),
+      "Years commercial / residential": read(form, "years", 80),
+      "Target rate": read(form, "rate", 60),
+      "Earliest availability": read(form, "available", 40),
+      "Indeed post": read(form, "post", 120),
+    },
+  });
+  back("Added at stage 1.");
+}

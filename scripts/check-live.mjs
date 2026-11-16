@@ -91,13 +91,17 @@ check(notFound.status === 404 && nf.includes("does not exist") && nf.includes("è
 
 // 4. The form endpoints, without sending an email: empty posts are refused, bots dropped, GET refused.
 const post = (url, fields) => { const f = new FormData(); for (const [k, v] of Object.entries(fields)) f.append(k, v); return get(url, { method: "POST", body: f }); };
-for (const url of ["/api/jobs", "/api/apply", "/api/alerts", "/api/projects", "/api/companies"]) {
-  const empty = await post(url, {});
+for (const [url, fields] of [["/api/jobs", {}], ["/api/apply", {}], ["/api/alerts", {}], ...["talent_request", "project", "technician", "partner"].map((kind) => ["/api/inquiries", { kind }])]) {
+  const label = fields.kind ? `${url} (${fields.kind})` : url;
+  const empty = await post(url, fields);
   const body = await empty.json().catch(() => ({}));
-  check(empty.status === 400 && body.error === "invalid", `${url}: refuses an empty form (${empty.status} ${body.error})`);
-  check((await post(url, { website_url: "spam" })).status === 200, `${url}: quietly drops bots`);
+  check(empty.status === 400 && body.error === "invalid", `${label}: refuses an empty form (${empty.status} ${body.error})`);
+  check((await post(url, { ...fields, website_url: "spam" })).status === 200, `${label}: quietly drops bots`);
   check((await get(url)).status === 405, `${url}: refuses GET`);
 }
+// The self-serve lead model is retired (16 Nov 2026): its endpoints answer 410 and "Get project leads" goes to /join.
+for (const url of ["/api/projects", "/api/companies"]) check((await post(url, {})).status === 410, `${url}: retired (410)`);
+await r("/companies goes to the partner form", "/companies", {}, 308, "/join#partner");
 
 // 5. Distribution and the daily run.
 const feed = await get("/jobs.xml");
@@ -112,6 +116,9 @@ check(cron.email === true, `email connected (${cron.email})`);
 check(cron.market === undefined, "daily run needs the cron secret");
 const importer = await (await get("/api/cron/import")).json().catch(() => ({}));
 check(importer.on === true && importer.added === undefined, `job import on, and needs the cron secret (${JSON.stringify(importer)})`);
+// Samuel, 16 Nov 2026: no prices or card payments on the site, outreach paused until new texts are approved.
+check(cron.pricesApproved === false && cron.payments === false, `no prices, no payments (${cron.pricesApproved}, ${cron.payments})`);
+check(cron.outreach?.paused === true && cron.outreach?.sending === false, `outreach paused (${JSON.stringify(cron.outreach)})`);
 console.log(`switches: payments ${cron.payments ? "on" : "off"}, outreach sending ${cron.outreach?.sending ? "on" : "off"}, live jobs in sitemap ${jobPages.length}`);
 
 // Report.

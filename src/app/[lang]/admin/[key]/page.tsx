@@ -1,14 +1,15 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { connection } from "next/server";
-import { adminCloseJobAction, importProspectsAction } from "@/app/actions";
+import { adminAddCandidateAction, adminCloseJobAction, adminStageAction, importProspectsAction } from "@/app/actions";
 import { Card, Shell } from "@/components/Shell";
 import { getDictionary } from "@/content";
 import { clicksByEmployer } from "@/lib/clicks";
-import { PRICING, paymentsOn } from "@/lib/config";
+import { PRICING, SOURCING_TRADES, paymentsOn } from "@/lib/config";
 import { hasDatabase, query } from "@/lib/db";
 import { listJobs, marketStats } from "@/lib/market";
 import { isOperator, outreachConfig, outreachStats, renderLeadOffer, renderOutreach, type Prospect } from "@/lib/outreach";
+import { CHECKS, KINDS, KIND_LABEL, STAGES, STAGE_LABEL, listInquiries } from "@/lib/pipeline";
 import { privatePage } from "@/lib/seo";
 
 export const metadata: Metadata = privatePage;
@@ -20,8 +21,10 @@ export default async function Admin({ params, searchParams }: PageProps<"/[lang]
   const secret = process.env.ADMIN_KEY;
   if (lang !== "en" || !secret || secret.length < 24 || key !== secret || !hasDatabase()) notFound();
   const t = getDictionary("en");
-  const imported = (await searchParams).imported;
-  const [stats, prospects, { jobs }, sample, operator, firstContractor, employers] = await Promise.all([
+  const { imported, msg: rawMsg } = await searchParams;
+  const msg = typeof rawMsg === "string" ? rawMsg.slice(0, 200) : "";
+  const [pipeline, stats, prospects, { jobs }, sample, operator, firstContractor, employers] = await Promise.all([
+    listInquiries(),
     marketStats(),
     outreachStats(),
     listJobs({ perPage: 30 }),
@@ -78,6 +81,125 @@ export default async function Admin({ params, searchParams }: PageProps<"/[lang]
             Lead in hand: {cfg.leadOffers ? "on" : "off (waits for Samuel's OK, then OUTREACH_LEAD_OFFERS=on)"}. Operators:{" "}
             {cfg.operators ? "on" : "no email until Samuel approves their text (then OUTREACH_OPERATORS=on)"}. Countries: {cfg.countries.join(", ")}.
           </p>
+        </Card>
+
+        <Card>
+          <div id="pipeline" className="scroll-mt-24" />
+          <h2 className="text-[20px] font-bold text-navy">Sourcing pipeline</h2>
+          <p className="mt-2 text-[14.5px] text-mute">
+            Every request, project and application from the site, and Indeed candidates you add below. Nobody is introduced and nothing is charged until you move them here: stage 2 needs license, identity and work history checked; &quot;engaged&quot; needs the signed agreement (and, for a project, the partner&apos;s license and insurance).
+          </p>
+          {msg && <p className={`mt-4 ${box}`}>{msg}</p>}
+          {KINDS.map((kind) => {
+            const rows = pipeline[kind];
+            const gate = Object.keys(CHECKS).find((k) => k.startsWith(`${kind}:`));
+            const checks = gate ? CHECKS[gate] : [];
+            return (
+              <div key={kind} className="mt-8">
+                <h3 className="text-[16px] font-bold text-navy">
+                  {KIND_LABEL[kind]}: {rows.length}
+                  <span className="ml-2 text-[13.5px] font-normal text-mute">
+                    {STAGES[kind].map((s) => `${STAGE_LABEL[s]} ${rows.filter((r) => r.stage === s).length}`).join(" · ")}
+                  </span>
+                </h3>
+                {rows.length === 0 ? (
+                  <p className={`mt-3 ${box}`}>None yet.</p>
+                ) : (
+                  <ul className="mt-3 space-y-4">
+                    {rows.map((r) => (
+                      <li key={r.id} className="rounded-xl bg-mist p-4 text-[14px]">
+                        <p className="flex flex-wrap justify-between gap-2">
+                          <b className="text-navy">
+                            {r.company ? `${r.company} · ` : ""}
+                            {r.name}
+                          </b>
+                          <span className="text-[12.5px] font-bold uppercase tracking-[0.1em] text-orange">{STAGE_LABEL[r.stage] ?? r.stage}</span>
+                        </p>
+                        <p className="mt-1 text-mute">
+                          <a href={`mailto:${r.email}`} className="underline">
+                            {r.email}
+                          </a>
+                          {r.phone ? ` · ${r.phone}` : ""} · {r.place}, {r.country} · {r.trades.join(", ")} · {r.source} · {new Date(r.created_at).toISOString().slice(0, 10)}
+                        </p>
+                        <dl className="mt-2 grid gap-x-4 gap-y-1 sm:grid-cols-[220px_1fr]">
+                          {Object.entries(r.data).map(([k, v]) => (
+                            <div key={k} className="contents">
+                              <dt className="text-mute">{k}</dt>
+                              <dd className="whitespace-pre-wrap">{v || "-"}</dd>
+                            </div>
+                          ))}
+                        </dl>
+                        {r.consent_at && (
+                          <p className="mt-2 text-[13px] text-mute">
+                            Consent {new Date(r.consent_at).toISOString().slice(0, 10)}: {r.consent_text}
+                          </p>
+                        )}
+                        {(r.files ?? []).map((file) => (
+                          <a key={file.id} href={`/api/admin/${key}/file/${file.id}`} className="mt-2 inline-block font-semibold text-navy underline">
+                            Download {file.name} ({Math.round(file.size / 1024)} KB)
+                          </a>
+                        ))}
+                        {Object.keys(r.checks).length > 0 && <p className="mt-2 text-[13px] text-navy">Checked: {Object.entries(r.checks).map(([k, v]) => `${k} (${v})`).join(" · ")}</p>}
+                        {r.notes && <p className="mt-2 whitespace-pre-wrap text-[13px] text-mute">{r.notes}</p>}
+                        <form action={adminStageAction} className="mt-3 flex flex-wrap items-end gap-3 border-t border-line pt-3">
+                          <input type="hidden" name="key" value={key} />
+                          <input type="hidden" name="id" value={r.id} />
+                          <select name="stage" defaultValue={r.stage} className="field w-auto py-2 text-[14px]">
+                            {STAGES[kind].map((s) => (
+                              <option key={s} value={s}>
+                                {STAGE_LABEL[s]}
+                              </option>
+                            ))}
+                          </select>
+                          {checks.map((c) => (
+                            <label key={c.key} className="flex max-w-[22rem] items-start gap-2 text-[13px]">
+                              <input type="checkbox" name="checks" value={c.key} defaultChecked={Boolean(r.checks[c.key])} className="mt-0.5 accent-navy" />
+                              {c.label}
+                            </label>
+                          ))}
+                          <input name="note" maxLength={500} placeholder="Note (license lookup URL, who confirmed...)" className="field min-w-[16rem] flex-1 py-2 text-[14px]" />
+                          <button className="rounded-md bg-navy px-4 py-2 text-[14px] font-semibold text-white">Save</button>
+                        </form>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            );
+          })}
+
+          <form action={adminAddCandidateAction} className="mt-10 grid gap-3 rounded-xl bg-sky p-5 sm:grid-cols-2">
+            <input type="hidden" name="key" value={key} />
+            <p className="text-[15px] font-bold text-navy sm:col-span-2">Add an Indeed candidate who said yes to question 3 (lands at stage 1)</p>
+            <input name="name" required placeholder="Full name" className="field" />
+            <input name="email" type="email" required placeholder="Email they gave" className="field" />
+            <input name="phone" placeholder="Phone they gave" className="field" />
+            <input name="place" placeholder="City, state (e.g. Miami, FL)" className="field" />
+            <select name="trade" required defaultValue="" className="field">
+              <option value="" disabled>
+                Trade
+              </option>
+              {SOURCING_TRADES.map((k) => (
+                <option key={k} value={k}>
+                  {k}
+                </option>
+              ))}
+            </select>
+            <input name="post" placeholder="Indeed post (e.g. Miami HVAC)" className="field" />
+            <input name="licenses" placeholder="Q1: licenses and certifications" className="field sm:col-span-2" />
+            <input name="license_no" placeholder="License number for verification" className="field" />
+            <input name="years" placeholder="Q1: years commercial / residential" className="field" />
+            <input name="rate" placeholder="Q2: target rate" className="field" />
+            <input name="available" placeholder="Q2: earliest availability" className="field" />
+            <label className="flex items-center gap-2 text-[14px]">
+              Day they said yes <input name="consent_day" type="date" required className="field w-auto py-2" />
+            </label>
+            <label className="flex items-start gap-2 text-[14px]">
+              <input type="checkbox" name="consent_yes" value="yes" required className="mt-1 accent-navy" />
+              They replied yes to question 3 (consent to be presented) in Indeed messages.
+            </label>
+            <button className="rounded-md bg-navy px-5 py-3 text-[15px] font-semibold text-white sm:col-span-2 sm:justify-self-start">Add at stage 1</button>
+          </form>
         </Card>
 
         <Card>
