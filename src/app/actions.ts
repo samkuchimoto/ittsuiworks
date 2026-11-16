@@ -4,6 +4,7 @@
 import { redirect } from "next/navigation";
 import { POWER, STARTS, isTrade } from "@/lib/config";
 import { isToken, query } from "@/lib/db";
+import { refreshJobPages } from "@/lib/job-cache";
 import { closeProject, leaveAccount, setAlert, setJobStatus, setLeadSettings, updateProject } from "@/lib/market";
 import { addProspects, unsubscribeProspect } from "@/lib/outreach";
 import { pathFor, type Locale } from "@/lib/site";
@@ -83,6 +84,7 @@ export async function importProspectsAction(form: FormData) {
 export async function adminCloseJobAction(form: FormData) {
   if (!adminOk(form)) redirect("/");
   await query(`UPDATE jobs SET status = 'closed' WHERE id = $1`, [read(form, "job", 12)]);
+  refreshJobPages([read(form, "job", 12)]);
   redirect(`/admin/${read(form, "key", 100)}`);
 }
 

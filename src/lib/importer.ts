@@ -10,6 +10,7 @@ import "server-only";
 import { IMPORT } from "./config";
 import { isCountry } from "./countries";
 import { hasDatabase, newId, newToken, query } from "./db";
+import { refreshJobPages } from "@/lib/job-cache";
 import { FEEDS, jobFromListing, listFeed, tradeOf, tradesOf, type Feed, type FeedJob, type FeedListing } from "./feeds";
 import { jobUrls, pingIndexNow } from "./market";
 
@@ -45,12 +46,15 @@ async function importFeed(feed: Feed, budget: { left: number }): Promise<FeedRes
   const source = sourceKey(feed);
   const listings = await listFeed(feed);
   const ids = listings.map((l) => l.sourceId);
+  // Jobs that were expired and are listed again: their cached pages must show them open (hosting fix 1).
+  const revived = await query<{ id: string }>(`SELECT id FROM jobs WHERE source = $1 AND source_id = ANY($2) AND status = 'expired'`, [source, ids]);
   const kept = await query(
     `UPDATE jobs SET status = 'live', expires_at = GREATEST(COALESCE(expires_at, now()), now() + make_interval(days => $3))
      WHERE source = $1 AND source_id = ANY($2) AND status IN ('live', 'expired') RETURNING id`,
     [source, ids, IMPORT.keepDays],
   );
-  const ended = await query(`UPDATE jobs SET status = 'expired' WHERE source = $1 AND status = 'live' AND NOT (source_id = ANY($2)) RETURNING id`, [source, ids]);
+  const ended = await query<{ id: string }>(`UPDATE jobs SET status = 'expired' WHERE source = $1 AND status = 'live' AND NOT (source_id = ANY($2)) RETURNING id`, [source, ids]);
+  refreshJobPages([...revived.map((j) => j.id), ...ended.map((j) => j.id)]);
   // Every job ever imported from this feed, closed ones included: a job taken down by hand is never imported again.
   const known = new Set((await query<{ source_id: string }>(`SELECT source_id FROM jobs WHERE source = $1`, [source])).map((r) => r.source_id));
   const fresh: FeedListing[] = listings.filter((l) => !known.has(l.sourceId)).slice(0, Math.max(0, budget.left));
