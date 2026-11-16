@@ -1,12 +1,10 @@
 import type { MetadataRoute } from "next";
-import { connection } from "next/server";
 import { allLiveJobs } from "@/lib/market";
 import { SITE_URL } from "@/lib/site";
 
 /** Every public page in both languages, then every live job (once, in the language it was written in). */
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   // Built at request time, so a job is in the sitemap the moment it goes live.
-  await connection();
   const both = (path: string, priority: number): MetadataRoute.Sitemap => {
     const en = `${SITE_URL}${path === "/" ? "" : path}`;
     const ja = `${SITE_URL}/ja${path === "/" ? "" : path}`;

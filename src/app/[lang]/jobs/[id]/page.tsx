@@ -1,10 +1,10 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { connection } from "next/server";
 import { fill, getDictionary } from "@/content";
 import { ApplyForm } from "@/components/Forms";
 import { JobCard } from "@/components/JobCard";
 import { LangSwitch } from "@/components/LangSwitch";
+import { LiveUntil } from "@/components/LiveUntil";
 import { Card, Shell } from "@/components/Shell";
 import { Label } from "@/components/Typo";
 import { collectsSeekers, paymentsOn } from "@/lib/config";
@@ -37,10 +37,21 @@ export async function generateMetadata({ params }: PageProps<"/[lang]/jobs/[id]"
 const EMPLOYMENT_TYPE: Record<string, string> = { full_time: "FULL_TIME", part_time: "PART_TIME", contract: "CONTRACTOR", temporary: "TEMPORARY" };
 const UNIT: Record<string, string> = { hour: "HOUR", month: "MONTH", year: "YEAR" };
 
+/**
+ * Cached (hosting fix 1, 16 Nov 2026): each job page is built on its first visit and kept until its job changes
+ * (lib/job-cache.ts refreshJobPages) or for a week at most (JOB_PAGE_SECONDS), instead of being rebuilt on every visit.
+ * Nothing on it is personal. The apply form posts to its own route, and apply links go through /api/go (counted, live
+ * check) on every click. A job that reaches its end date while cached switches to "closed" in the browser (LiveUntil).
+ */
+export const revalidate = 604800;
+export const dynamicParams = true;
+export function generateStaticParams() {
+  return [];
+}
+
 export default async function JobPage({ params }: PageProps<"/[lang]/jobs/[id]">) {
   const { lang, id } = await params;
   if (!isLocale(lang)) notFound();
-  await connection();
   const job = await getJob(id);
   if (!job) notFound();
   const t = getDictionary(lang);
@@ -158,6 +169,14 @@ export default async function JobPage({ params }: PageProps<"/[lang]/jobs/[id]">
 
         <div className="lg:sticky lg:top-24 lg:self-start">
           {live && (
+            <LiveUntil
+              expiresAt={new Date(job.expires_at!).toISOString()}
+              closed={
+                <p role="status" className="rounded-xl bg-orange/10 px-5 py-3 text-[15.5px] font-semibold text-orange-deep">
+                  {t.job.closed} {t.job.closedText}
+                </p>
+              }
+            >
             <Card>
               {external ? (
                 <div>
@@ -182,6 +201,7 @@ export default async function JobPage({ params }: PageProps<"/[lang]/jobs/[id]">
                 </>
               )}
             </Card>
+            </LiveUntil>
           )}
           {canFeature && (
             <form action="/api/checkout" method="post" className="mt-6 rounded-2xl bg-mist px-6 py-5 ring-1 ring-line">

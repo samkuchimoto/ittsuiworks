@@ -1,10 +1,20 @@
-// Checks the whole live site in one go, with no browser and no emails sent.
-// Usage: npm run check:live            (https://ittsuiworks.com)
+// Checks the site with no browser and no emails sent. Exits with code 1 when anything fails, so it can gate a deploy.
+// Usage: npm run check:live            (https://ittsuiworks.com, quick: the key pages only)
 //        npm run check:live -- <base>  (a preview or local server)
-// Exits with code 1 when anything fails, so it can gate a deploy.
+//        FULL=1 npm run check:live -- <base>   (every sitemap page and every linked file)
+// Hosting fix 3 (Samuel, 16 Nov 2026): a full sweep rebuilds every page it visits, so it is for local or preview servers.
+// On the live site it also needs ALLOW_FULL_LIVE=1, which needs Samuel's go.
 
 const base = (process.argv[2] ?? "https://ittsuiworks.com").replace(/\/$/, "");
 const apex = new URL(base).host;
+const FULL = process.env.FULL === "1";
+const LIVE = /^https:\/\/(www\.)?ittsuiworks\.com$/.test(base);
+if (FULL && LIVE && process.env.ALLOW_FULL_LIVE !== "1") {
+  console.error("A full sweep of the live site rebuilds every page it visits. Run it on a local or preview server, or set ALLOW_FULL_LIVE=1 with Samuel's go.");
+  process.exit(2);
+}
+/** Quick mode: these pages (when listed) and one job page. */
+const KEY_PAGES = ["/", "/ja", "/jobs", "/request", "/post-project", "/join"];
 const results = [];
 const check = (pass, label) => results.push({ pass: Boolean(pass), label });
 const get = (path, init = {}) => fetch(path.startsWith("http") ? path : base + path, { redirect: "manual", ...init });
@@ -15,7 +25,7 @@ const sitemap = await text("/sitemap.xml");
 const listed = [...sitemap.matchAll(/<loc>([^<]+)<\/loc>/g)].map((m) => new URL(m[1]).pathname);
 // Hundreds of job pages share one template: every other page, plus a sample of six jobs.
 const jobPages = listed.filter((p) => /\/jobs\/[a-z0-9x]+$/.test(p));
-const pages = [...listed.filter((p) => !jobPages.includes(p)), ...jobPages.slice(0, 6)];
+const pages = FULL ? [...listed.filter((p) => !jobPages.includes(p)), ...jobPages.slice(0, 6)] : [...KEY_PAGES.filter((p) => p === "/" || listed.includes(p)), ...jobPages.slice(0, 1)];
 check(listed.length >= 14, `sitemap lists ${listed.length} pages (${jobPages.length} jobs)`);
 check((await text("/robots.txt")).includes("sitemap.xml"), "robots.txt points to the sitemap");
 
@@ -57,8 +67,8 @@ for (const path of pages) {
   if (ld) check((() => { try { const d = JSON.parse(ld); return d.name === "Ittsui Works" || (d["@type"] === "JobPosting" && d.title && d.hiringOrganization?.name); } catch { return false; } })(), `${path}: structured data is valid`);
 }
 
-// 2. Every linked page and file answers, with the right type.
-for (const url of [...assets].sort()) {
+// 2. Every linked page and file answers, with the right type (quick mode: the first 15).
+for (const url of [...assets].sort().slice(0, FULL ? Infinity : 15)) {
   // "Apply with the employer" goes out through /api/go: a redirect to the employer's page, tagged, never counted for HEAD.
   if (url.startsWith("/api/go/")) {
     const res = await get(url, { method: "HEAD" });
@@ -79,7 +89,8 @@ const r = async (label, path, init, status, to) => {
   const res = await get(path, init);
   check(res.status === status && (to === undefined || loc(res) === to), `${label}: ${res.status} -> ${loc(res)}`);
 };
-await r("www goes to the main domain", `https://www.${apex}/`, {}, 308);
+// Only real domains have a www host (a local or preview base has none).
+if (/^https:\/\/[^/]*ittsuiworks\.com$/.test(base)) await r("www goes to the main domain", `https://www.${apex}/`, {}, 308);
 await r("/en goes to /", "/en", {}, 308, "/");
 await r("/en/privacy goes to /privacy", "/en/privacy", {}, 308, "/privacy");
 await r("Japanese browser on / goes to /ja", "/", { headers: { "Accept-Language": "ja-JP,ja;q=0.9" } }, 307, "/ja");
@@ -124,5 +135,5 @@ console.log(`switches: payments ${cron.payments ? "on" : "off"}, outreach sendin
 // Report.
 const failed = results.filter((x) => !x.pass);
 for (const x of failed) console.log("FAIL ", x.label);
-console.log(`\n${base}: ${results.length - failed.length} passed, ${failed.length} failed (${pages.length} pages, ${assets.size} links and files)`);
+console.log(`\n${base}: ${results.length - failed.length} passed, ${failed.length} failed (${FULL ? "full" : "quick"}: ${pages.length} pages, ${FULL ? assets.size : Math.min(assets.size, 15)} links and files)`);
 process.exit(failed.length ? 1 : 0);

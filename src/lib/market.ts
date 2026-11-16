@@ -31,6 +31,7 @@ import {
 } from "./config";
 import { countryName } from "./countries";
 import { hasDatabase, isToken, newId, newToken, query } from "./db";
+import { refreshJobPages } from "@/lib/job-cache";
 import { dateText, money, toMinor } from "./format";
 import { trySendMail, sendMail } from "./mail";
 import { INDEXNOW_KEY, SITE_URL, isLocale, pathFor, type Locale } from "./site";
@@ -227,7 +228,11 @@ export async function openAccount(token: string): Promise<{ company: Company; co
      WHERE company_id = $1 AND status = 'pending' RETURNING *`,
     [company.id, JOB_DAYS],
   );
-  if (published.length) await pingIndexNow(published.flatMap(jobUrls));
+  if (published.length) {
+    // Called from the account page, where Next.js does not allow a refresh: the daily check refreshes new jobs too.
+    refreshJobPages(published.map((j) => j.id));
+    await pingIndexNow(published.flatMap(jobUrls));
+  }
   return { company, confirmed, published };
 }
 
@@ -250,6 +255,7 @@ export async function setJobStatus(token: string, jobId: string, action: "close"
   if (!company || company.status !== "active") return;
   if (action === "close") {
     await query(`UPDATE jobs SET status = 'closed' WHERE id = $1 AND company_id = $2 AND status IN ('live', 'pending')`, [jobId, company.id]);
+    refreshJobPages([jobId]);
   } else {
     const [job] = await query<Job>(
       `UPDATE jobs SET status = 'live', published_at = COALESCE(published_at, now()),
@@ -257,7 +263,10 @@ export async function setJobStatus(token: string, jobId: string, action: "close"
        WHERE id = $1 AND company_id = $2 AND status IN ('live', 'expired') RETURNING *`,
       [jobId, company.id, JOB_DAYS],
     );
-    if (job) await pingIndexNow(jobUrls(job));
+    if (job) {
+      refreshJobPages([job.id]);
+      await pingIndexNow(jobUrls(job));
+    }
   }
 }
 
@@ -268,7 +277,8 @@ export async function setLeadSettings(token: string, settings: { leads: boolean;
 export async function leaveAccount(token: string): Promise<void> {
   const company = await companyByToken(token);
   if (!company) return;
-  await query(`UPDATE jobs SET status = 'closed' WHERE company_id = $1 AND status IN ('live', 'pending')`, [company.id]);
+  const closed = await query<{ id: string }>(`UPDATE jobs SET status = 'closed' WHERE company_id = $1 AND status IN ('live', 'pending') RETURNING id`, [company.id]);
+  refreshJobPages(closed.map((j) => j.id));
   await query(`UPDATE companies SET status = 'left', leads = false WHERE id = $1`, [company.id]);
 }
 
@@ -822,6 +832,7 @@ async function sponsorPaid(session: Stripe.Checkout.Session, jobId: string, amou
      WHERE id = $1 RETURNING *`,
     [jobId, SPONSOR_DAYS],
   );
+  refreshJobPages([jobId]);
   const t = dict(company.lang);
   const until = dateText(updated.sponsored_until!, langOf(company.lang));
   const paid = money(fromMinor(amount, currency), currency, langOf(company.lang));
@@ -890,7 +901,11 @@ async function recoverCheckouts(): Promise<number> {
 
 export async function dailyMarket() {
   // Ends and clean-up.
-  const expired = await query(`UPDATE jobs SET status = 'expired' WHERE status = 'live' AND expires_at < now() RETURNING id`);
+  const expired = await query<{ id: string }>(`UPDATE jobs SET status = 'expired' WHERE status = 'live' AND expires_at < now() RETURNING id`);
+  // Cached job pages (hosting fix 1): expired today, and published in the last two days (a job published from the account
+  // page could not be refreshed there).
+  const recent = await query<{ id: string }>(`SELECT id FROM jobs WHERE status = 'live' AND published_at > now() - interval '2 days'`);
+  refreshJobPages([...expired.map((j) => j.id), ...recent.map((j) => j.id)]);
   await query(`UPDATE projects SET status = 'closed' WHERE status IN ('waiting', 'open', 'full') AND verified_at < now() - interval '${PROJECT_DAYS} days'`);
   await query(`DELETE FROM alerts WHERE status = 'unverified' AND created_at < now() - interval '7 days'`);
   await query(`DELETE FROM jobs WHERE status = 'pending' AND created_at < now() - interval '14 days'`);
@@ -902,7 +917,8 @@ export async function dailyMarket() {
   // Kept 12 months after the end, as the privacy policy says.
   await query(`DELETE FROM applications WHERE job_id IN (SELECT id FROM jobs WHERE status IN ('closed', 'expired') AND COALESCE(expires_at, created_at) < now() - interval '12 months')`);
   await query(`DELETE FROM sponsorships WHERE job_id IN (SELECT id FROM jobs WHERE status IN ('closed', 'expired') AND COALESCE(expires_at, created_at) < now() - interval '12 months')`);
-  await query(`DELETE FROM jobs WHERE status IN ('closed', 'expired') AND COALESCE(expires_at, created_at) < now() - interval '12 months'`);
+  const removed = await query<{ id: string }>(`DELETE FROM jobs WHERE status IN ('closed', 'expired') AND COALESCE(expires_at, created_at) < now() - interval '12 months' RETURNING id`);
+  refreshJobPages(removed.map((j) => j.id));
   await query(`DELETE FROM leads WHERE project_id IN (SELECT id FROM projects WHERE status = 'closed' AND created_at < now() - interval '13 months')`);
   await query(`DELETE FROM projects WHERE status = 'closed' AND created_at < now() - interval '13 months'`);
   await query(`DELETE FROM apply_clicks WHERE at < now() - interval '13 months'`);
