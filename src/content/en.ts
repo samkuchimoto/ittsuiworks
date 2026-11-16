@@ -17,7 +17,7 @@ export const en = {
     postProjectTitle: "Submit a commercial project | Ittsui Works",
     postProjectDescription: "Commercial subcontractor sourcing for HVAC, electrical, data center and marine work. We match your project with licensed trade companies after checking their license and insurance.",
     requestTitle: "Request technicians | Ittsui Works",
-    requestDescription: "Request commercial HVAC technicians, commercial electricians and data center technicians for direct hire or contract, in the US and Japan. Specialist sourcing, with licenses checked before any introduction.",
+    requestDescription: "Request commercial HVAC technicians, commercial electricians and data center technicians for direct hire or contract in the United States. Specialist sourcing, with licenses checked before any introduction.",
     joinTitle: "Apply as a technician or trade partner | Ittsui Works",
     joinDescription: "Free. HVAC, electrical, data center and marine technicians, and licensed trade companies that take commercial subcontract work.",
     accountTitle: "Your account | Ittsui Works",
@@ -182,10 +182,10 @@ export const en = {
         text: "Free to join the Ittsui Works network, apply to open roles, or register as a licensed subcontractor partner. Profile shared only upon qualification and explicit consent.",
       },
       {
-        tag: "Direct-Hire Technician Placement",
+        tag: "Direct-Hire Technician Placement (US Hires)",
         big: "$2,500 to $5,000",
         sub: "Flat Fee (or Agreed % per Hire)",
-        text: "For employers hiring commercial HVAC, electrical, data center, or marine technicians. $0 upfront to submit a role; placement fee is payable only when you hire a candidate we introduce, governed by a standard written recruiting agreement.",
+        text: "For employers hiring commercial HVAC, electrical, data center, or marine technicians. $0 upfront to submit a role; placement fee is payable only when you hire a candidate we introduce, governed by a standard written recruiting agreement. US hires only, subject to US legal requirements.",
       },
       {
         tag: "Commercial Project Sourcing",
@@ -216,7 +216,7 @@ export const en = {
       { q: "Which trades?", a: "Commercial HVAC, commercial and industrial electrical, data center critical facilities and marine." },
       {
         q: "What does it cost?",
-        a: "Applying is free for technicians and trade partners. An employer pays a placement fee only when it hires a technician we introduced; on a commercial project the licensed contractor pays a referral commission. Both are agreed in writing before any introduction. Nothing is charged on this site.",
+        a: "Applying is free for technicians and trade partners. An employer pays a placement fee only when it hires a technician we introduced (US hires only); on a commercial project the licensed contractor pays a referral commission. Both are agreed in writing before any introduction. Nothing is charged on this site.",
       },
       {
         q: "Are the technicians on your payroll?",
@@ -367,7 +367,7 @@ export const en = {
   request: {
     label: "Technical recruiting and staffing",
     title: "Request Technicians",
-    intro: "Commercial HVAC technicians, commercial electricians, data center and marine technicians, for direct hire or contract. Tell us the role; a person sources and screens for it.",
+    intro: "Commercial HVAC technicians, commercial electricians, data center and marine technicians, for direct hire or contract in the United States. Tell us the role; a person sources and screens for it.",
     points: [
       "Specialist sourcing for your trade, site and license",
       "License number, identity and work history checked before anyone is presented",
@@ -687,7 +687,7 @@ export const en = {
       },
       {
         h: "Requests, projects and fees",
-        p: "Requesting technicians and submitting a project are free. Any fee, such as a placement fee paid by an employer that hires a technician we introduced, or a referral commission paid by a licensed contractor, is set in a separate written agreement signed before any introduction. Nothing is charged on this site. Technicians and trade partners are never charged.",
+        p: "Requesting technicians and submitting a project are free. Any fee, such as a placement fee paid by an employer that hires a technician we introduced (placement is offered for US hires only, subject to US legal requirements), or a referral commission paid by a licensed contractor, is set in a separate written agreement signed before any introduction. Nothing is charged on this site. Technicians and trade partners are never charged.",
       },
       {
         h: "Applications",

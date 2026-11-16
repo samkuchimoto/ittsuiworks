@@ -432,6 +432,8 @@ export function RequestForm({ lang, t, countries }: { lang: Locale; t: NetText &
   const { step, setStep, next, missing } = useTwoSteps(formRef, REQUEST_STEP_ONE, invalid);
   const f = t.form;
   const off = (name: string) => (missing.includes(name) || bad(name) ? true : undefined);
+  // Paid placement is for US hires only until the Japanese licence (Samuel, 16 Nov 2026).
+  const usOnly = countries.filter(([code]) => code === "US");
   if (status === "done") return <Done title={t.request.sentTitle} text={t.request.sent} />;
   return (
     <form ref={formRef} onSubmit={submit} noValidate className="grid scroll-mt-24 gap-4 sm:grid-cols-2">
@@ -449,10 +451,10 @@ export function RequestForm({ lang, t, countries }: { lang: Locale; t: NetText &
           <Select id="rq-headcount" name="headcount" options={HEADCOUNTS.map((k) => [k, `${k} ${t.ui.people}`])} placeholder={f.select} bad={off("headcount")} />
         </Field>
         <Field id="rq-country" label={f.country}>
-          <Select id="rq-country" name="country" options={countries} placeholder={f.select} defaultValue={preset?.country || (lang === "ja" ? "JP" : "US")} bad={off("country")} />
+          <Select id="rq-country" name="country" options={usOnly} placeholder={f.select} defaultValue="US" bad={off("country")} />
         </Field>
         <Field id="rq-place" label={f.placeState}>
-          <input id="rq-place" name="place" required maxLength={120} defaultValue={preset?.place ?? ""} placeholder={f.placeStateHint} className="field placeholder:text-mute/70" aria-invalid={off("place")} />
+          <input id="rq-place" name="place" required maxLength={120} defaultValue={preset?.country === "US" ? preset.place : ""} placeholder={f.placeStateHint} className="field placeholder:text-mute/70" aria-invalid={off("place")} />
         </Field>
         <Field id="rq-start" label={f.startDate}>
           <input id="rq-start" name="start" type="date" required className="field" aria-invalid={off("start")} />

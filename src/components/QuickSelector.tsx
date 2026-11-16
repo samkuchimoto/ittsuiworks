@@ -7,11 +7,14 @@ import { ArrowIcon } from "./Icons";
 
 const TRADES = ["hvac", "electrical", "datacenter", "marine"] as const;
 const HUBS = ["tx", "fl", "us", "jp"] as const;
+/** Paid placement is for US hires only until the Japanese licence (Samuel, 16 Nov 2026): Japan is offered for projects only. */
+const hubsFor = (mode: "request" | "project") => HUBS.filter((h) => mode === "project" || h !== "jp");
 
 /**
  * The B2B quick selector under the hero (Samuel, 16 Nov 2026, Airbnb's one-line search in our industrial style):
  * mode, trade and hub, then Continue opens the matching form with those already chosen (?trade=&hub=, read by the
- * form in the browser, so both form pages stay static). Without JavaScript it still opens the request form.
+ * form in the browser, so both form pages stay static). Without JavaScript it still opens the request form. Japan is a hub
+ * for commercial projects only: technician requests (paid placement) are for US hires until the Japanese licence.
  */
 export function QuickSelector({ lang, t }: { lang: Locale; t: Dict["selector"] }) {
   const [mode, setMode] = useState<"request" | "project">("request");
@@ -52,8 +55,8 @@ export function QuickSelector({ lang, t }: { lang: Locale; t: Dict["selector"] }
       <label className={cell}>
         <span className={label}>{t.hub}</span>
         <span className="relative">
-          <select name="hub" defaultValue={lang === "ja" ? "jp" : "tx"} className={select}>
-            {HUBS.map((k) => (
+          <select key={mode} name="hub" defaultValue={mode === "project" && lang === "ja" ? "jp" : lang === "ja" ? "us" : "tx"} className={select}>
+            {hubsFor(mode).map((k) => (
               <option key={k} value={k}>
                 {t.hubs[k]}
               </option>
