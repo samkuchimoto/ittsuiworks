@@ -272,6 +272,11 @@ export default async function Home({ params }: PageProps<"/[lang]">) {
                 <Title id="sectors-title">{t.sectors.title}</Title>
               </div>
               <p className="max-w-[34rem] text-[17.5px] leading-relaxed text-mute lg:justify-self-end">{t.sectors.intro}</p>
+              {lang === "en" && (
+                <a href="/technicians" className="inline-flex items-center gap-2 text-[16px] font-semibold text-navy underline underline-offset-4 lg:col-span-2">
+                  See technician profiles <ArrowIcon className="size-4" />
+                </a>
+              )}
             </div>
             <div className="mt-12 grid gap-6 lg:grid-cols-3">
               {t.sectors.items.map((sector, i) => (

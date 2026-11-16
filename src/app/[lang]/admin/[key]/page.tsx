@@ -1,7 +1,19 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { connection } from "next/server";
-import { adminAddCandidateAction, adminAddLeadAction, adminCloseJobAction, adminEventAction, adminEventDoneAction, adminStageAction, importProspectsAction } from "@/app/actions";
+import {
+  adminAddCandidateAction,
+  adminAddLeadAction,
+  adminCloseJobAction,
+  adminEventAction,
+  adminEventDoneAction,
+  adminListTechnicianAction,
+  adminLoadPartnersAction,
+  adminPartnerStatusAction,
+  adminStageAction,
+  importProspectsAction,
+} from "@/app/actions";
+import { PARTNERS, confirmLink, headline, listPartners } from "@/lib/partners";
 import { Card, Shell } from "@/components/Shell";
 import { getDictionary } from "@/content";
 import { clicksByEmployer } from "@/lib/clicks";
@@ -39,6 +51,8 @@ export default async function Admin({ params, searchParams }: PageProps<"/[lang]
     clicksByEmployer(30, 30),
   ]);
   const events = await eventsFor(Object.values(pipeline).flat().map((r) => r.id));
+  const partners = await listPartners().catch(() => []);
+  const partnerByInquiry = new Map(partners.filter((p) => p.inquiry_id).map((p) => [p.inquiry_id as string, p.id]));
   const today = new Date().toISOString().slice(0, 10);
   const cfg = outreachConfig();
   // The next contractor in line (the newest rows are often operators).
@@ -224,6 +238,19 @@ export default async function Admin({ params, searchParams }: PageProps<"/[lang]
                           <input name="amount" inputMode="decimal" maxLength={14} placeholder="Amount (USD)" className="field w-[9rem] py-2 text-[14px]" />
                           <button className="rounded-md px-4 py-2 text-[14px] font-semibold text-navy ring-1 ring-navy/30">Log activity</button>
                         </form>
+                        {kind === "technician" &&
+                          r.consent_at &&
+                          (partnerByInquiry.has(r.id) ? (
+                            <p className="mt-2 text-[13px] text-navy">
+                              Technician profile: <a href="#technicians" className="font-semibold underline">{partnerByInquiry.get(r.id)}</a>
+                            </p>
+                          ) : (
+                            <form action={adminListTechnicianAction} className="mt-2">
+                              <input type="hidden" name="key" value={key} />
+                              <input type="hidden" name="id" value={r.id} />
+                              <button className="rounded-md px-4 py-2 text-[13px] font-semibold text-navy ring-1 ring-navy/30">List anonymously in the technician directory</button>
+                            </form>
+                          ))}
                       </li>
                     ))}
                   </ul>
@@ -300,6 +327,84 @@ export default async function Admin({ params, searchParams }: PageProps<"/[lang]
               They replied yes to question 3 (consent to be presented) in Indeed messages.
             </label>
             <button className="rounded-md bg-navy px-5 py-3 text-[15px] font-semibold text-white sm:col-span-2 sm:justify-self-start">Add at Qualification Pending</button>
+          </form>
+        </Card>
+
+        <Card>
+          <div id="technicians" className="scroll-mt-24" />
+          <h2 className="text-[20px] font-bold text-navy">Technician profiles (public directory)</h2>
+          <p className="mt-2 text-[14.5px] text-mute">
+            Anonymous cards at <a href="/technicians" className="underline">/technicians</a>. An invited profile holds no name or contact and is not public: send its owner the
+            confirm link by hand (Indeed Messages). It becomes active only when they confirm with their own details, which land in the pipeline as a technician
+            application with consent. Active {partners.filter((p) => p.status === "active").length} · invited {partners.filter((p) => p.status === "invited").length} · hidden{" "}
+            {partners.filter((p) => p.status === "hidden").length} · requests {partners.reduce((n, p) => n + p.requests, 0)}.
+          </p>
+          {msg && <p className={`mt-4 ${box}`}>{msg}</p>}
+          <div className="mt-4 rounded-xl bg-sky p-4 text-[13.5px]">
+            <p className="font-bold text-navy">Email to a technician when a client asks for them: {PARTNERS.notify ? "ON" : "OFF until Samuel approves these words"}</p>
+            <p className="mt-2 font-semibold">Subject: {PARTNERS.mail.subject}</p>
+            <pre className="mt-1 whitespace-pre-wrap font-sans">{PARTNERS.mail.lines.join("\n")}</pre>
+          </div>
+          {partners.length === 0 ? (
+            <p className={`mt-4 ${box}`}>No profiles yet.</p>
+          ) : (
+            <div className="mt-4 overflow-x-auto">
+              <table className="w-full text-left text-[13.5px]">
+                <thead className="text-mute">
+                  <tr>
+                    <th className="py-2 pr-3">ID</th>
+                    <th className="py-2 pr-3">Profile</th>
+                    <th className="py-2 pr-3">Status</th>
+                    <th className="py-2 pr-3">Requests</th>
+                    <th className="py-2 pr-3">Confirm link / pipeline</th>
+                    <th className="py-2" />
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-line">
+                  {partners.map((p) => (
+                    <tr key={p.id} className="align-top">
+                      <td className="py-2 pr-3 font-mono font-semibold">{p.id}</td>
+                      <td className="py-2 pr-3">
+                        {headline(p)}
+                        {p.certs ? <span className="block text-mute">{p.certs}</span> : null}
+                      </td>
+                      <td className="py-2 pr-3 font-semibold uppercase">{p.status}</td>
+                      <td className="py-2 pr-3">{p.requests}</td>
+                      <td className="py-2 pr-3">
+                        {p.status === "invited" && p.token ? (
+                          <input readOnly value={confirmLink(p.token)} aria-label={`Confirm link for ${p.id}`} className="field w-[22rem] py-1.5 font-mono text-[12px]" />
+                        ) : p.inquiry_id ? (
+                          <a href={`#lead-${p.inquiry_id}`} className="underline">
+                            {p.inquiry_id.toUpperCase()}
+                          </a>
+                        ) : (
+                          "-"
+                        )}
+                      </td>
+                      <td className="py-2">
+                        {p.status !== "invited" && (
+                          <form action={adminPartnerStatusAction}>
+                            <input type="hidden" name="key" value={key} />
+                            <input type="hidden" name="id" value={p.id} />
+                            <input type="hidden" name="status" value={p.status === "active" ? "hidden" : "active"} />
+                            <button className="rounded-md px-3 py-1.5 text-[13px] font-semibold text-navy ring-1 ring-navy/30">{p.status === "active" ? "Hide" : "List again"}</button>
+                          </form>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+          <form action={adminLoadPartnersAction} className="mt-6 grid gap-3">
+            <input type="hidden" name="key" value={key} />
+            <label htmlFor="partners-csv" className="text-[14px] font-semibold text-navy">
+              Load invited profiles: paste partners-public-preview.csv (Partner ID, Headline, Trade, City, State, Certifications). Other columns are ignored, so no name or
+              contact is stored.
+            </label>
+            <textarea id="partners-csv" name="csv" rows={4} className="field font-mono text-[12px]" />
+            <button className="justify-self-start rounded-md bg-navy px-5 py-2.5 text-[14px] font-semibold text-white">Load invited profiles</button>
           </form>
         </Card>
 

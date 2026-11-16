@@ -215,6 +215,22 @@ CREATE TABLE IF NOT EXISTS inquiry_events (
 );
 CREATE INDEX IF NOT EXISTS inquiry_events_inquiry ON inquiry_events (inquiry_id, at DESC);
 CREATE INDEX IF NOT EXISTS inquiry_events_open ON inquiry_events (kind, done, due);
+-- Technician profiles (17 Nov 2026): anonymous cards only. An invited row holds no name or contact detail; those
+-- arrive in the technician's own pipeline entry (inquiry_id) when they confirm. Only 'active' rows are public.
+CREATE TABLE IF NOT EXISTS partners (
+  id text PRIMARY KEY,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  status text NOT NULL DEFAULT 'invited',
+  token text UNIQUE,
+  trade text NOT NULL DEFAULT '',
+  city text NOT NULL DEFAULT '',
+  state text NOT NULL DEFAULT '',
+  certs text NOT NULL DEFAULT '',
+  source text NOT NULL DEFAULT 'indeed-resume',
+  inquiry_id text REFERENCES inquiries(id) ON DELETE SET NULL,
+  confirmed_at timestamptz
+);
+CREATE INDEX IF NOT EXISTS partners_status ON partners (status, confirmed_at DESC);
 `;
 
 function ensureSchema(): Promise<void> {

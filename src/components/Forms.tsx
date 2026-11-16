@@ -11,7 +11,7 @@ type Status = "idle" | "sending" | "done" | "failed" | "invalid" | "busy" | "dup
 type Result = { ok?: boolean; error?: string; fields?: string[]; live?: boolean; jobId?: string };
 
 /** Posts a form to an API route and keeps its state: sending, done, which fields were refused. */
-function useSubmit(endpoint: string) {
+export function useSubmit(endpoint: string) {
   const [status, setStatus] = useState<Status>("idle");
   const [invalid, setInvalid] = useState<string[]>([]);
   const [result, setResult] = useState<Result>({});
@@ -53,7 +53,7 @@ function Legend({ children }: { children: ReactNode }) {
 }
 
 /** People never see this field; bots fill it in. */
-function Honeypot() {
+export function Honeypot() {
   return (
     <div aria-hidden="true" className="absolute -left-[9999px] size-px overflow-hidden">
       <label>
@@ -63,7 +63,7 @@ function Honeypot() {
   );
 }
 
-function Consent({ lang, t, bad }: { lang: Locale; t: Dict["form"]; bad: (n: string) => true | undefined }) {
+export function Consent({ lang, t, bad }: { lang: Locale; t: Dict["form"]; bad: (n: string) => true | undefined }) {
   return (
     <label className="flex items-start gap-3 text-[14.5px] text-ink sm:col-span-2">
       <input type="checkbox" name="consent" value="yes" required className="mt-1 size-4 accent-navy" aria-invalid={bad("consent")} />
@@ -82,7 +82,7 @@ function Consent({ lang, t, bad }: { lang: Locale; t: Dict["form"]; bad: (n: str
   );
 }
 
-function Submit({ t, label, status }: { t: Dict["form"]; label: string; status: Status }) {
+export function Submit({ t, label, status }: { t: Dict["form"]; label: string; status: Status }) {
   return (
     <div className="flex flex-col gap-3 sm:col-span-2 sm:flex-row sm:items-center">
       <button
@@ -100,7 +100,7 @@ function Submit({ t, label, status }: { t: Dict["form"]; label: string; status: 
   );
 }
 
-function Done({ title, text, children }: { title: string; text: string; children?: ReactNode }) {
+export function Done({ title, text, children }: { title: string; text: string; children?: ReactNode }) {
   return (
     <div role="status" className="flex flex-col items-start gap-4 py-6">
       <span className="grid size-12 place-items-center rounded-full bg-navy text-white">
@@ -113,7 +113,7 @@ function Done({ title, text, children }: { title: string; text: string; children
   );
 }
 
-function Select({ id, name, options, bad, defaultValue = "", placeholder, onChange }: { id: string; name: string; options: [string, string][]; bad?: true; defaultValue?: string; placeholder?: string; onChange?: (v: string) => void }) {
+export function Select({ id, name, options, bad, defaultValue = "", placeholder, onChange }: { id: string; name: string; options: [string, string][]; bad?: true; defaultValue?: string; placeholder?: string; onChange?: (v: string) => void }) {
   return (
     <select id={id} name={name} required defaultValue={defaultValue} className="field" aria-invalid={bad} onChange={onChange ? (e) => onChange(e.target.value) : undefined}>
       {placeholder !== undefined && (

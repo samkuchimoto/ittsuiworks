@@ -188,6 +188,35 @@ export async function adminAddLeadAction(form: FormData) {
   back("Added at New Lead. Nobody was emailed.", id);
 }
 
+// ------------------------------------------------------------------ technician profiles (admin, 17 Nov 2026)
+
+const toTechnicians = (form: FormData, msg: string) => redirect(`/admin/${read(form, "key", 100)}?msg=${encodeURIComponent(msg)}#technicians`);
+
+/** Pastes the anonymous preview CSV: one invited profile per row (ID, trade, city, state, certifications only). */
+export async function adminLoadPartnersAction(form: FormData) {
+  if (!adminOk(form)) redirect("/");
+  const { loadInvited } = await import("@/lib/partners");
+  const { added, skipped } = await loadInvited(String(form.get("csv") ?? "").slice(0, 200_000));
+  toTechnicians(form, `Profiles loaded: ${added} added, ${skipped} skipped (already loaded or no valid ID). None is public until its owner confirms.`);
+}
+
+/** Takes a confirmed profile off the directory, or lists it again. */
+export async function adminPartnerStatusAction(form: FormData) {
+  if (!adminOk(form)) redirect("/");
+  const { setPartnerStatus } = await import("@/lib/partners");
+  const status = read(form, "status", 10) === "active" ? "active" : "hidden";
+  const ok = await setPartnerStatus(read(form, "id", 12).toUpperCase(), status);
+  toTechnicians(form, ok ? (status === "active" ? "Listed again." : "Hidden from the directory.") : "Not changed: only a profile its owner confirmed can be listed or hidden.");
+}
+
+/** Lists a /join technician who gave consent, anonymously, in the directory. */
+export async function adminListTechnicianAction(form: FormData) {
+  if (!adminOk(form)) redirect("/");
+  const { listFromInquiry } = await import("@/lib/partners");
+  const id = await listFromInquiry(read(form, "id", 12));
+  toTechnicians(form, id ? `Listed as ${id}.` : "Not listed: only a technician application with consent can be listed.");
+}
+
 /** The sales activity log (16 Nov 2026): a call, email, meeting, note, follow-up (with a due date and owner) or proposal. */
 export async function adminEventAction(form: FormData) {
   if (!adminOk(form)) redirect("/");
