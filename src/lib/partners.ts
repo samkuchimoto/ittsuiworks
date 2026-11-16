@@ -13,7 +13,7 @@ import { randomBytes } from "node:crypto";
 import type { SourcingTrade } from "./config";
 import { newToken, query } from "./db";
 import { trySendMail } from "./mail";
-import { createInquiry } from "./pipeline";
+import { addEvent, createInquiry } from "./pipeline";
 import { EMAIL, SITE_URL } from "./site";
 
 /**
@@ -280,4 +280,35 @@ export async function notifyRequest(partner: Partner, request: { reference: stri
     const fillIn = (s: string) => s.replace(/\{(\w+)\}/g, (_, k: string) => values[k] ?? "");
     await trySendMail({ to: tech.email, replyTo: EMAIL, subject: fillIn(PARTNERS.mail.subject), lines: PARTNERS.mail.lines.map(fillIn) });
   }
+}
+
+/**
+ * An Indeed lead replied YES in Indeed Messages (Samuel, 17 November 2026: "their YES in Indeed is enough"). One click
+ * on the admin page records the consent with the exact question they answered, moves them to Qualification Pending and
+ * turns their anonymous card on. Nobody is emailed. Returns the profile ID, or null when there is nothing to do.
+ */
+export async function saidYes(inquiryId: string, day: string): Promise<string | null> {
+  const [inq] = await query<{ id: string; kind: string; source: string; data: Record<string, string>; consent_at: string | null }>(
+    `SELECT id, kind, source, data, consent_at FROM inquiries WHERE id = $1`,
+    [inquiryId],
+  );
+  if (!inq || inq.kind !== "technician" || inq.source !== "indeed-resume" || inq.consent_at || !/^\d{4}-\d{2}-\d{2}$/.test(day)) return null;
+  const question = inq.data["Message (one line)"] || "Can we send your profile to employers hiring in your area?";
+  const consent = `Said YES in Indeed Messages on ${day} to: "${question}"`;
+  const [updated] = await query<{ id: string }>(
+    `UPDATE inquiries SET consent_at = ($2::date + time '12:00') AT TIME ZONE 'UTC', consent_text = $3, stage = 'qualified', stage_at = now()
+     WHERE id = $1 AND consent_at IS NULL RETURNING id`,
+    [inquiryId, day, consent],
+  );
+  if (!updated) return null;
+  await addEvent(inquiryId, { kind: "note", text: consent });
+  const partnerId = (inq.data["Partner ID"] ?? "").toUpperCase();
+  if (isPartnerId(partnerId)) {
+    const [card] = await query<{ id: string }>(
+      `UPDATE partners SET status = 'active', inquiry_id = $2, confirmed_at = now() WHERE id = $1 AND status = 'invited' RETURNING id`,
+      [partnerId, inquiryId],
+    );
+    if (card) return card.id;
+  }
+  return listFromInquiry(inquiryId);
 }

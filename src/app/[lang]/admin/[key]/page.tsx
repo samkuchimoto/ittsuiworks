@@ -10,6 +10,7 @@ import {
   adminListTechnicianAction,
   adminLoadPartnersAction,
   adminPartnerStatusAction,
+  adminSaidYesAction,
   adminStageAction,
   importProspectsAction,
 } from "@/app/actions";
@@ -238,6 +239,15 @@ export default async function Admin({ params, searchParams }: PageProps<"/[lang]
                           <input name="amount" inputMode="decimal" maxLength={14} placeholder="Amount (USD)" className="field w-[9rem] py-2 text-[14px]" />
                           <button className="rounded-md px-4 py-2 text-[14px] font-semibold text-navy ring-1 ring-navy/30">Log activity</button>
                         </form>
+                        {kind === "technician" && !r.consent_at && r.source === "indeed-resume" && (
+                          <form action={adminSaidYesAction} className="mt-2 flex flex-wrap items-center gap-2 rounded-lg bg-orange/10 p-2">
+                            <input type="hidden" name="key" value={key} />
+                            <input type="hidden" name="id" value={r.id} />
+                            <span className="text-[13px] text-navy">Replied YES in Indeed on</span>
+                            <input name="day" type="date" defaultValue={today} className="field w-auto py-1.5 text-[13px]" aria-label="Day they said yes" />
+                            <button className="rounded-md bg-orange px-4 py-2 text-[13px] font-semibold text-white">Said YES: list them</button>
+                          </form>
+                        )}
                         {kind === "technician" &&
                           r.consent_at &&
                           (partnerByInquiry.has(r.id) ? (

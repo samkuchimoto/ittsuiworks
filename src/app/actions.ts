@@ -209,6 +209,16 @@ export async function adminPartnerStatusAction(form: FormData) {
   toTechnicians(form, ok ? (status === "active" ? "Listed again." : "Hidden from the directory.") : "Not changed: only a profile its owner confirmed can be listed or hidden.");
 }
 
+/** An Indeed lead said YES in Indeed Messages: consent recorded, Qualification Pending, anonymous card on. No email. */
+export async function adminSaidYesAction(form: FormData) {
+  if (!adminOk(form)) redirect("/");
+  const { saidYes } = await import("@/lib/partners");
+  const id = read(form, "id", 12);
+  const day = read(form, "day", 10) || new Date().toISOString().slice(0, 10);
+  const listed = await saidYes(id, day);
+  redirect(`/admin/${read(form, "key", 100)}?msg=${encodeURIComponent(listed ? `YES recorded. Listed as ${listed}. Nobody was emailed.` : "Not changed: only an Indeed lead without a recorded YES can be marked.")}#lead-${id}`);
+}
+
 /** Lists a /join technician who gave consent, anonymously, in the directory. */
 export async function adminListTechnicianAction(form: FormData) {
   if (!adminOk(form)) redirect("/");
