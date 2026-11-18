@@ -9,7 +9,7 @@ export function GET() {
 Operated by Kuchimoto LLC, a Wyoming limited liability company. A private personnel service and subcontractor sourcing service; it does not perform electrical, HVAC or other contracting work. Contact: contact@ittsuiworks.com
 
 ## For employers
-- [Request technicians](${SITE_URL}/request): direct hire or contract. A person sources and screens; license number, identity and work history are checked before anyone is presented, and only with the technician's consent. Placement fees are agreed in writing before the first introduction; nothing is charged on the site.
+- [Request technicians](${SITE_URL}/request): direct hire or contract. A person sources and screens; identity, work history and any license the role requires are checked before anyone is presented, and only with the technician's consent. Placement fees are agreed in writing before the first introduction; nothing is charged on the site.
 
 ## For facility owners and general contractors
 - [Submit a commercial project](${SITE_URL}/post-project): matched with trade companies licensed for the work, after their license and insurance are checked. The licensed contractor signs with the owner directly.

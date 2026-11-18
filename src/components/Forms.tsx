@@ -421,7 +421,8 @@ function BackButton({ t, onClick }: { t: Dict["form"]; onClick: () => void }) {
   );
 }
 
-const REQUEST_STEP_ONE = ["trades", "role", "headcount", "country", "place", "start", "duration"];
+// Simplified on 18 Nov 2026 (Samuel: simplify the admin, never the law): headcount and duration are optional.
+const REQUEST_STEP_ONE = ["trades", "role", "country", "place", "start"];
 const PROJECT_STEP_ONE = ["facility", "size", "trades", "country", "place", "start"];
 
 /** Employers: a recruiting and staffing request (/request). */
@@ -474,7 +475,7 @@ export function RequestForm({ lang, t, countries }: { lang: Locale; t: NetText &
         <input id="rq-pay" name="pay" maxLength={80} placeholder={f.payHint} className="field placeholder:text-mute/70" />
       </Field>
       <Field id="rq-work" label={f.work} wide>
-        <textarea id="rq-work" name="description" required rows={5} maxLength={4000} placeholder={f.workHint} className="field resize-y placeholder:text-mute/70" aria-invalid={bad("description")} />
+        <textarea id="rq-work" name="description" rows={5} maxLength={4000} placeholder={f.workHint} className="field resize-y placeholder:text-mute/70" aria-invalid={bad("description")} />
       </Field>
       <Field id="rq-licenses" label={f.licensesRequired} wide>
         <input id="rq-licenses" name="licenses" maxLength={400} placeholder={f.certificationsHint} className="field placeholder:text-mute/70" />
@@ -607,16 +608,16 @@ export function TechnicianForm({ lang, t, countries }: { lang: Locale; t: NetTex
       </Field>
       <Pills name="trade" legend={f.primaryTrade} options={sourcingOptions(t.ui)} bad={bad("trade")} />
       <Field id="tc-licenses" label={f.licensesHeld} wide>
-        <textarea id="tc-licenses" name="licenses" required rows={3} maxLength={600} placeholder={f.licensesHeldHint} className="field resize-y placeholder:text-mute/70" aria-invalid={bad("licenses")} />
+        <textarea id="tc-licenses" name="licenses" rows={3} maxLength={600} placeholder={f.licensesHeldHint} className="field resize-y placeholder:text-mute/70" aria-invalid={bad("licenses")} />
       </Field>
       <Field id="tc-years" label={f.yearsCommercial}>
         <Select id="tc-years" name="years" options={EXPERIENCE.map((k) => [k, `${k} ${t.ui.yearsSuffix}`])} placeholder={f.select} bad={bad("years")} />
       </Field>
       <Field id="tc-rate" label={f.rate}>
-        <input id="tc-rate" name="rate" required maxLength={60} placeholder={f.rateHint} className="field placeholder:text-mute/70" aria-invalid={bad("rate")} />
+        <input id="tc-rate" name="rate" maxLength={60} placeholder={f.rateHint} className="field placeholder:text-mute/70" aria-invalid={bad("rate")} />
       </Field>
       <Field id="tc-available" label={f.available}>
-        <input id="tc-available" name="available" type="date" required className="field" aria-invalid={bad("available")} />
+        <input id="tc-available" name="available" type="date" className="field" aria-invalid={bad("available")} />
       </Field>
       <Field id="tc-file" label={f.file}>
         <input id="tc-file" name="file" type="file" accept=".pdf,.jpg,.jpeg,.png,.heic,.doc,.docx" className="field file:mr-3 file:rounded file:border-0 file:bg-sky file:px-3 file:py-1.5 file:text-navy" aria-invalid={bad("file")} />
@@ -659,7 +660,8 @@ export function PartnerForm({ lang, t, countries }: { lang: Locale; t: NetText &
         <Select id="pt-country" name="country" options={countries} placeholder={f.select} defaultValue={lang === "ja" ? "JP" : "US"} bad={bad("country")} />
       </Field>
       <Field id="pt-license" label={f.stateLicense}>
-        <input id="pt-license" name="license" required maxLength={80} className="field" aria-invalid={bad("license")} />
+        <input id="pt-license" name="license" maxLength={80} aria-describedby="pt-license-hint" className="field" aria-invalid={bad("license")} />
+        <p id="pt-license-hint" className="mt-1.5 text-[13px] text-mute">{f.stateLicenseHint}</p>
       </Field>
       <Pills name="insurance" legend={f.insurance} options={ynOptions(t.ui)} bad={bad("insurance")} />
       <Field id="pt-insurance-details" label={f.insuranceDetails} wide>

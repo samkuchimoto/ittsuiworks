@@ -60,11 +60,12 @@ export async function POST(request: Request) {
       trades,
       data: {
         Role: need("role", r.text("role", 80)) as string,
-        "Technicians needed": need("headcount", r.oneOf("headcount", HEADCOUNTS)) as string,
+        // Optional since 18 Nov 2026 (Samuel: simplify the admin, never the law): asked on the first call instead.
+        "Technicians needed": r.oneOf("headcount", HEADCOUNTS) ?? "",
         Engagement: need("engagement", r.oneOf("engagement", ENGAGEMENTS)) as string,
         Start: need("start", r.text("start", 40)) as string,
-        "Project duration": need("duration", r.oneOf("duration", DURATIONS)) as string,
-        "The work": need("description", r.text("description", 4000), r.text("description", 4000).length >= 20) as string,
+        "Project duration": r.oneOf("duration", DURATIONS) ?? "",
+        "The work": r.text("description", 4000),
         "Licenses or certifications required": r.text("licenses", 400),
         "Pay range": r.text("pay", 80),
       },
@@ -102,8 +103,10 @@ export async function POST(request: Request) {
     // Japan: no technician details are collected until the MHLW notification is filed (JAPAN_SEEKER_DATA).
     if (base.country && !collectsSeekers(base.country)) invalid.push("country");
     if (form.get("consent_profile") !== "yes") invalid.push("consent_profile");
+    // Since 18 Nov 2026 only who, where and which trade are required: licenses, experience, rate and dates help
+    // matching and can come on the first call. Nobody is presented before any license the role needs is checked.
     const available = r.text("available", 10);
-    need("available", available, /^\d{4}-\d{2}-\d{2}$/.test(available));
+    need("available", available, available === "" || /^\d{4}-\d{2}-\d{2}$/.test(available));
     const resume = await readFiles(form, "file", 1);
     if (resume === null) invalid.push("file");
     else files = resume;
@@ -114,9 +117,9 @@ export async function POST(request: Request) {
       trades: trade ? [trade] : [],
       consentText: getDictionary(lang).join.tech.consentProfile,
       data: {
-        "Licenses and certifications": need("licenses", r.text("licenses", 600)) as string,
-        "Years of commercial experience": need("years", r.oneOf("years", EXPERIENCE)) as string,
-        "Target rate": need("rate", r.text("rate", 60)) as string,
+        "Licenses and certifications": r.text("licenses", 600),
+        "Years of commercial experience": r.oneOf("years", EXPERIENCE) ?? "",
+        "Target rate": r.text("rate", 60),
         "Earliest availability": available,
       },
     };
@@ -129,11 +132,12 @@ export async function POST(request: Request) {
       company: need("company", r.text("company", 120)) as string,
       trades,
       data: {
-        "State license number": need("license", r.text("license", 80)) as string,
-        "Liability and workers' comp insurance active": need("insurance", r.oneOf("insurance", ["yes", "no"] as const)) as string,
-        "Crew size": need("crew", r.oneOf("crew", CREW_SIZES)) as string,
+        // License and insurance are checked before any project that needs them, not at sign-up (18 Nov 2026).
+        "State license number": r.text("license", 80),
+        "Liability and workers' comp insurance active": r.oneOf("insurance", ["yes", "no"] as const) ?? "",
+        "Crew size": r.oneOf("crew", CREW_SIZES) ?? "",
         "Service areas": need("areas", r.text("areas", 300)) as string,
-        "Typical project size": need("size", r.oneOf("size", PROJECT_SIZES)) as string,
+        "Typical project size": r.oneOf("size", PROJECT_SIZES) ?? "",
         "Insurance details": r.text("insurance_details", 200),
       },
     };
