@@ -291,6 +291,7 @@ export const en = {
     featured: "Featured",
     posted: "Posted {date}",
     payNotListed: "Pay not listed",
+    fromCareersPage: "From the employer's careers page",
     back: "Back to the home page",
   },
   jobs: {

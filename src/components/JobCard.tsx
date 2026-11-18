@@ -17,6 +17,8 @@ export type CardJob = {
   published_at: string | Date | null;
   sponsored_until: string | Date | null;
   company_name?: string;
+  /** Set for jobs imported from an employer's careers page (lib/feeds.ts). */
+  source?: string | null;
 };
 
 /** One job in a list: title, employer, place, pay, trade. Works on the server and in the browser. */
@@ -36,6 +38,7 @@ export function JobCard({ job, lang, t }: { job: CardJob; lang: Locale; t: Dict[
       </div>
       <h3 className="font-display mt-3 text-[23px] leading-snug text-navy group-hover:underline group-hover:underline-offset-4">{job.title}</h3>
       {job.company_name && <p className="mt-1 text-[15px] font-semibold text-ink/85">{job.company_name}</p>}
+      {job.source && <p className="mt-1 text-[13px] text-mute">{t.fromCareersPage}</p>}
       <p className="mt-1 text-[15px] text-mute">
         {job.city}, {countryName(job.country, lang)}
       </p>

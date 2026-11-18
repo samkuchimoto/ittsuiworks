@@ -289,6 +289,7 @@ export const ja: Dict = {
     featured: "注目",
     posted: "{date} 掲載",
     payNotListed: "給与の記載なし",
+    fromCareersPage: "企業の採用ページから",
     back: "ホームへ戻る",
   },
   jobs: {
