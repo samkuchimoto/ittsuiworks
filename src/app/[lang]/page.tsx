@@ -88,6 +88,8 @@ export default async function Home({ params }: PageProps<"/[lang]">) {
                   ))}
                 </h1>
                 <p className="mt-6 max-w-[580px] text-[17px] leading-[1.75] text-ink/85 lg:text-[18px]">{t.hero.lead}</p>
+                {/* The purpose, stated openly (Rockefeller, letter 31; Samuel, 18 Nov 2026). */}
+                <p className="mt-4 max-w-[580px] text-[16.5px] font-semibold leading-relaxed text-navy lg:text-[17.5px]">{t.hero.purpose}</p>
                 <div className="mt-8 flex flex-col gap-3 sm:max-w-[400px]">
                   <a
                     href={at("/request")}
@@ -357,7 +359,7 @@ export default async function Home({ params }: PageProps<"/[lang]">) {
           </div>
         </section>
 
-        {/* Fees (16 Nov 2026): three B2B tiers, $0 upfront for everyone; placement and brokerage fees only on results, in writing. */}
+        {/* Your investment (18 Nov 2026, Rockefeller letters 13 and 22): after the value; client fees first, the worker card (free, policy) last, light. */}
         <section id="fees" aria-labelledby="fees-title" className="bg-sky py-20 lg:py-24">
           <div className="mx-auto max-w-[1280px] px-4 sm:px-8">
             <div className="grid gap-6 lg:grid-cols-2 lg:items-end">
@@ -368,20 +370,23 @@ export default async function Home({ params }: PageProps<"/[lang]">) {
               <p className="max-w-[36rem] text-[17px] leading-relaxed text-mute lg:justify-self-end">{t.fees.intro}</p>
             </div>
             <ul className="mt-12 grid gap-5 lg:grid-cols-3">
-              {t.fees.items.map((fee, i) => (
-                <li
-                  key={fee.tag}
-                  data-reveal
-                  style={delay(i)}
-                  className={`flex flex-col rounded-2xl p-7 lg:p-8 ${i === 0 ? "bg-white ring-1 ring-navy/8" : "bg-navy text-white shadow-[0_40px_80px_-44px_rgb(10_27_51/0.9)]"}`}
-                >
-                  <p className={`text-[12.5px] font-bold uppercase tracking-[0.14em] ${i === 0 ? "text-orange" : "text-amber"}`}>{fee.tag}</p>
-                  <p className={`font-display mt-5 text-[38px] leading-none lg:text-[44px] ${i === 0 ? "text-navy" : ""}`}>{fee.big}</p>
-                  <p className={`mt-2 text-[15.5px] font-semibold ${i === 0 ? "text-navy" : "text-white/90"}`}>{fee.sub}</p>
-                  <span aria-hidden="true" className="mt-5 block h-0.5 w-10 bg-orange" />
-                  <p className={`mt-5 text-[15px] leading-relaxed ${i === 0 ? "text-ink/80" : "text-white/80"}`}>{fee.text}</p>
-                </li>
-              ))}
+              {t.fees.items.map((fee, i) => {
+                const light = i === t.fees.items.length - 1;
+                return (
+                  <li
+                    key={fee.tag}
+                    data-reveal
+                    style={delay(i)}
+                    className={`flex flex-col rounded-2xl p-7 lg:p-8 ${light ? "bg-white ring-1 ring-navy/8" : "bg-navy text-white shadow-[0_40px_80px_-44px_rgb(10_27_51/0.9)]"}`}
+                  >
+                    <p className={`text-[12.5px] font-bold uppercase tracking-[0.14em] ${light ? "text-orange" : "text-amber"}`}>{fee.tag}</p>
+                    <p className={`font-display mt-5 text-[38px] leading-none lg:text-[44px] ${light ? "text-navy" : ""}`}>{fee.big}</p>
+                    <p className={`mt-2 text-[15.5px] font-semibold ${light ? "text-navy" : "text-white/90"}`}>{fee.sub}</p>
+                    <span aria-hidden="true" className="mt-5 block h-0.5 w-10 bg-orange" />
+                    <p className={`mt-5 text-[15px] leading-relaxed ${light ? "text-ink/80" : "text-white/80"}`}>{fee.text}</p>
+                  </li>
+                );
+              })}
             </ul>
             <div className="mt-10 flex flex-wrap gap-3">
               <Cta href={at("/request")}>{t.fees.cta}</Cta>
