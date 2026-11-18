@@ -10,24 +10,24 @@ export const OUTREACH_TEXTS = {
     steps: [
       {
         // Samuel, 15 November 2026: "Use this version." Word for word.
-        subject: "HVAC, electrician and project leads, free to start",
+        subject: "HVAC, electrician and project leads",
         lines: [
           "Hello {company} team,",
           "",
           "Ittsui Works sends you HVAC, electrician, data center and marine clients who already have budget and a start date. You only pay for the leads you take.",
           "",
-          "Free to start: https://ittsuiworks.com",
+          "Start here: https://ittsuiworks.com",
           "",
           "Ittsui Works Team",
         ],
       },
       {
         subject: "{company}: hiring technicians?",
-        lines: ["Hello again,", "A job posted on Ittsui Works is free and live in minutes, on its own page built for Google's job search:", "{postJob}"],
+        lines: ["Hello again,", "A job posted on Ittsui Works is live in minutes, on its own page built for Google's job search:", "{postJob}"],
       },
       {
         subject: "{trade} project requests in {country}",
-        lines: ["Hello,", "Facility owners and builders post {trade} projects on Ittsui Works, and companies in the trade take the leads they want. Signing up is free:", "{companies}"],
+        lines: ["Hello,", "Facility owners and builders post {trade} projects on Ittsui Works, and companies in the trade take the leads they want. Sign up here:", "{companies}"],
       },
     ],
     footer: [
@@ -41,21 +41,21 @@ export const OUTREACH_TEXTS = {
   ja: {
     steps: [
       {
-        subject: "技術者の求人掲載（無料）と案件のご案内｜一対ワークス",
+        subject: "技術者の求人掲載と案件のご案内｜一対ワークス",
         lines: [
           "{company} ご担当者様",
-          "一対ワークスは、業務用空調・データセンター・船舶の会社向けに、技術者の求人を無料で掲載し、案件のご相談をお届けするサービスです。費用は、お受けになる案件の分だけです。",
+          "一対ワークスは、業務用空調・データセンター・船舶の会社向けに、技術者の求人を掲載し、案件のご相談をお届けするサービスです。費用は、お受けになる案件の分だけです。",
           "求人を掲載する：{postJob}",
           "案件を受け取る：{companies}",
         ],
       },
       {
         subject: "{company} 様：技術者の採用について",
-        lines: ["{company} ご担当者様", "一対ワークスへの求人掲載は無料で、数分で公開されます。Google のしごと検索に対応した専用ページができます。", "{postJob}"],
+        lines: ["{company} ご担当者様", "一対ワークスに掲載した求人は、数分で公開されます。Google のしごと検索に対応した専用ページができます。", "{postJob}"],
       },
       {
         subject: "{country}の{trade}案件のご案内",
-        lines: ["{company} ご担当者様", "一対ワークスでは、施設のオーナーや建設会社が{trade}の案件を掲載し、専門会社が希望する案件をお受けしています。登録は無料です。", "{companies}"],
+        lines: ["{company} ご担当者様", "一対ワークスでは、施設のオーナーや建設会社が{trade}の案件を掲載し、専門会社が希望する案件をお受けしています。ご登録はこちらから。", "{companies}"],
       },
     ],
     footer: [
@@ -110,7 +110,7 @@ export const LEAD_IN_HAND_TEXTS = {
 
 /**
  * Facility operators (data centers found on PeeringDB and OpenStreetMap) buy cooling and power work, so they get the
- * buyer side: post a project, free. Step 2 is the approved hiring email above, word for word.
+ * buyer side: post a project. Step 2 is the approved hiring email above, word for word.
  * Drafted 15 November 2026. NOT SENT until Samuel approves these words and OUTREACH_OPERATORS=on is set in Vercel;
  * until then operators get no email at all (never the contractor email).
  * Same footer as above. Values: as above, plus {postProject}
@@ -119,11 +119,11 @@ export const OPERATOR_TEXTS = {
   en: {
     steps: [
       {
-        subject: "HVAC and electrical contractors for {company}, free",
+        subject: "HVAC and electrical contractors for {company}",
         lines: [
           "Hello {company} team,",
           "",
-          "Post your cooling, power or fit-out work on Ittsui Works. HVAC and electrical companies in your country get it, and up to three of them can take it and contact you. Free for you.",
+          "Post your cooling, power or fit-out work on Ittsui Works. HVAC and electrical companies in your country get it, and up to three of them can take it and contact you.",
           "",
           "Post a project: {postProject}",
           "",
@@ -133,24 +133,24 @@ export const OPERATOR_TEXTS = {
       OUTREACH_TEXTS.en.steps[1],
       {
         subject: "Cooling and power work at {company}?",
-        lines: ["Hello,", "One short form, free for you: HVAC and electrical companies in your country see your project, and three at most take it:", "{postProject}"],
+        lines: ["Hello,", "One short form: HVAC and electrical companies in your country see your project, and three at most take it:", "{postProject}"],
       },
     ],
   },
   ja: {
     steps: [
       {
-        subject: "空調・電気工事の専門会社をお探しの際に（無料）｜一対ワークス",
+        subject: "空調・電気工事の専門会社をお探しの際に｜一対ワークス",
         lines: [
           "{company} ご担当者様",
-          "一対ワークスに冷却・電源・内装工事の案件を掲載いただくと、{country}の空調・電気工事会社に届き、最大3社が案件をお受けして直接ご連絡します。ご利用は無料です。",
+          "一対ワークスに冷却・電源・内装工事の案件を掲載いただくと、{country}の空調・電気工事会社に届き、最大3社が案件をお受けして直接ご連絡します。",
           "案件を掲載する：{postProject}",
         ],
       },
       OUTREACH_TEXTS.ja.steps[1],
       {
         subject: "{company} 様：冷却・電源工事のご相談",
-        lines: ["{company} ご担当者様", "短いフォームひとつで、{country}の空調・電気工事会社に案件が届きます。お受けするのは最大3社、ご利用は無料です。", "{postProject}"],
+        lines: ["{company} ご担当者様", "短いフォームひとつで、{country}の空調・電気工事会社に案件が届きます。お受けするのは最大3社です。", "{postProject}"],
       },
     ],
   },

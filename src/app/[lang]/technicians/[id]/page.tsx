@@ -30,7 +30,7 @@ export default async function TechnicianPage({ params }: PageProps<"/[lang]/tech
         <aside className="lg:sticky lg:top-24 lg:self-start">
           <TechnicianCard partner={partner} />
           <p className="mt-6 text-[14.5px] leading-relaxed text-mute">
-            No fee to send a request. A technician is introduced only after they say yes and the terms are agreed in writing.{" "}
+            A technician is introduced only after they say yes. Your investment: the placement fee in our written recruiting agreement, agreed before the introduction and due only if you hire. Sending a request has no charge.{" "}
             <a href="/technicians" className="font-semibold text-navy underline underline-offset-4">
               All profiles
             </a>

@@ -34,7 +34,7 @@ export default async function Technicians({ params, searchParams }: PageProps<"/
     <Shell lang="en" t={t}>
       <TechHead
         label="Technician profiles"
-        title="Technicians who confirmed their profile"
+        title="The technician your site needs, by trade and state"
         intro="HVAC technicians and electricians in the US who confirmed their own profile with us. Names and contact details stay private. Ask for a technician and we contact them first."
       />
       <section className="mx-auto max-w-[1280px] px-4 py-12 sm:px-8 lg:py-16">

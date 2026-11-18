@@ -15,8 +15,8 @@ Operated by Kuchimoto LLC, a Wyoming limited liability company. A private person
 - [Submit a commercial project](${SITE_URL}/post-project): matched with trade companies licensed for the work, after their license and insurance are checked. The licensed contractor signs with the owner directly.
 
 ## For technicians and trade companies
-- [Apply](${SITE_URL}/join): free. Individual technicians (HVAC, electrical, data center, marine) and licensed subcontractors.
-- [Jobs](${SITE_URL}/jobs): live technician jobs; applying is free. Job alerts by email, free.
+- [Apply](${SITE_URL}/join): introductions to employers hiring the trade and to commercial projects that fit the license, for individual technicians (HVAC, electrical, data center, marine) and licensed subcontractors. No fee to join or apply.
+- [Jobs](${SITE_URL}/jobs): live technician jobs and job alerts by email. No fee to apply.
 
 ## Other
 - [Japanese site](${SITE_URL}/ja)

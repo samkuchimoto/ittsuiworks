@@ -32,8 +32,8 @@ export default async function ConfirmProfile({ params }: PageProps<"/[lang]/part
     <Shell lang="en" t={t}>
       <TechHead
         label={`Profile ${partner.id}`}
-        title="Confirm your technician profile"
-        intro="Commercial employers can ask for technicians on Ittsui Works. Your profile is listed without your name, photo or contact details, and we contact you before any introduction."
+        title="Your trade, valued: confirm your technician profile"
+        intro="Commercial employers can ask for technicians on Ittsui Works. Your profile is listed without your name, photo or contact details, and we contact you before any introduction. There is no fee to be listed."
       />
       <section className="mx-auto grid max-w-[1280px] gap-8 px-4 py-12 sm:px-8 lg:grid-cols-[1fr_2fr] lg:py-16">
         <aside className="lg:sticky lg:top-24 lg:self-start">

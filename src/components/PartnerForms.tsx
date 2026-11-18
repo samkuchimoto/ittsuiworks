@@ -9,7 +9,7 @@ const TRADES: [string, string][] = SOURCING_TRADES.map((k) => [k, { hvac: "HVAC 
 /** The invited technician confirms the profile with their own details (/partner/<token>). */
 export function PartnerConfirmForm({ token, form, consent, defaults }: { token: string; form: Dict["form"]; consent: string; defaults: { trade: string; city: string; state: string; certs: string } }) {
   const { status, submit, bad } = useSubmit("/api/partners/confirm");
-  if (status === "done") return <Done title="Your profile is confirmed" text="It is now listed anonymously at ittsuiworks.com/technicians. When an employer asks for it, we contact you first. A confirmation with your private link is in your inbox." />;
+  if (status === "done") return <Done title="Thank you. Your profile is confirmed" text="It is now listed anonymously at ittsuiworks.com/technicians. When an employer asks for it, we contact you first. A confirmation with your private link is in your inbox." />;
   return (
     <form onSubmit={submit} noValidate className="grid gap-4 sm:grid-cols-2">
       <input type="hidden" name="token" value={token} />
