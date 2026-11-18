@@ -189,7 +189,7 @@ export const en = {
         tag: "Direct-Hire Technician Placement (US Hires)",
         big: "25%",
         sub: "of First-Year Base Pay, per Hire",
-        text: "For employers hiring commercial HVAC, electrical, data center, or marine technicians. $0 upfront to submit a role; placement fee is payable only when you hire a candidate we introduce, governed by a standard written recruiting agreement. US hires only, subject to US legal requirements.",
+        text: "For employers hiring commercial HVAC, electrical, data center, or marine technicians. $0 upfront to submit a role; placement fee is payable only when you hire a candidate we introduce, governed by a standard written recruiting agreement. Free replacement if the hire leaves within 90 days of starting, when the invoice was paid within 15 days (not for layoffs or a changed role). US hires only, subject to US legal requirements.",
       },
       {
         tag: "Commercial Project Sourcing",
@@ -220,7 +220,7 @@ export const en = {
       { q: "Which trades?", a: "Commercial HVAC, commercial and industrial electrical, data center critical facilities and marine." },
       {
         q: "What does it cost?",
-        a: "Applying is free for technicians and trade partners. An employer pays a placement fee only when it hires a technician we introduced (US hires only); on a commercial project the licensed contractor pays a referral commission. Both are agreed in writing before any introduction. Nothing is charged on this site.",
+        a: "Applying is free for technicians and trade partners. An employer pays a placement fee only when it hires a technician we introduced (US hires only); on a commercial project the licensed contractor pays a referral commission. Both are agreed in writing before any introduction. Placements carry a 90-day guarantee: free replacement if the hire leaves within 90 days of starting, when the invoice was paid within 15 days (not for layoffs or a changed role). Nothing is charged on this site.",
       },
       {
         q: "Are the technicians on your payroll?",
@@ -375,7 +375,7 @@ export const en = {
     nextTitle: "What happens next",
     nextSteps: [
       "A person reads your request and replies by email.",
-      "You receive our recruiting agreement: 25% of first-year base pay, only if you hire someone we introduce.",
+      "You receive our recruiting agreement: 25% of first-year base pay, only if you hire someone we introduce, with a 90-day free replacement.",
       "You meet checked candidates and decide.",
     ],
     label: "Technical recruiting and staffing",
@@ -757,7 +757,7 @@ export const en = {
       },
       {
         h: "Requests, projects and fees",
-        p: "Requesting technicians and submitting a project are free. Any fee, such as a placement fee paid by an employer that hires a technician we introduced (placement is offered for US hires only, subject to US legal requirements), or a referral commission paid by a licensed contractor, is set in a separate written agreement signed before any introduction. Nothing is charged on this site. Technicians are never charged. A trade partner pays a referral commission of 8% to 12% only on paid milestones of a project we introduced, under a written agreement signed first.",
+        p: "Requesting technicians and submitting a project are free. Any fee, such as a placement fee paid by an employer that hires a technician we introduced (placement is offered for US hires only, subject to US legal requirements), or a referral commission paid by a licensed contractor, is set in a separate written agreement signed before any introduction. Nothing is charged on this site. Placements carry a 90-day guarantee: free replacement if the hire leaves within 90 days of starting, when the invoice was paid within 15 days (not for layoffs or a changed role). Technicians are never charged. A trade partner pays a referral commission of 8% to 12% only on paid milestones of a project we introduced, under a written agreement signed first.",
       },
       {
         h: "Applications",
