@@ -1,3 +1,4 @@
+import { inMarket } from "./config";
 import type { Locale } from "./site";
 
 /** ISO 3166-1 alpha-2 codes. Names come from the browser's own list (Intl.DisplayNames), in the page's language. */
@@ -23,7 +24,8 @@ export function countryName(code: string, lang: Locale | string = "en"): string 
 
 /** Every country, sorted by its name in the page's language. */
 export function countryOptions(lang: Locale): [string, string][] {
-  return COUNTRY_CODES.map((code) => [code, countryName(code, lang)] as [string, string]).sort((a, b) => a[1].localeCompare(b[1], lang));
+  // The markets served only (US and Japan, 18 Nov 2026), not every country.
+  return COUNTRY_CODES.filter(inMarket).map((code) => [code, countryName(code, lang)] as [string, string]).sort((a, b) => a[1].localeCompare(b[1], lang));
 }
 
 /** The currency a job in this country is most likely paid in. */

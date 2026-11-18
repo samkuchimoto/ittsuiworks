@@ -28,6 +28,7 @@ import {
   collectsSeekers,
   paymentsOn,
   priceCurrency,
+  inMarket,
 } from "./config";
 import { countryName } from "./countries";
 import { hasDatabase, isToken, newId, newToken, query } from "./db";
@@ -347,7 +348,8 @@ export async function postJob(companyInput: CompanyInput, input: JobInput, accou
   return { live, jobId: id, email: company.email };
 }
 
-const LIVE = `j.status = 'live' AND j.expires_at > now()`;
+// Only the markets served (US and Japan, 18 Nov 2026): jobs elsewhere stay in the database but are not shown.
+const LIVE = `j.status = 'live' AND j.expires_at > now() AND j.country IN ('US', 'JP')`;
 const JOB_SELECT = `SELECT j.*, c.name AS company_name, c.website AS company_website FROM jobs j JOIN companies c ON c.id = j.company_id`;
 const FEATURED_FIRST = `COALESCE(j.sponsored_until > now(), false) DESC, j.published_at DESC`;
 
@@ -386,7 +388,7 @@ export async function getJob(id: string): Promise<Job | null> {
   return (await query<Job>(`${JOB_SELECT} WHERE j.id = $1 AND j.status <> 'pending'`, [id]))[0] ?? null;
 }
 
-export const isLive = (job: Job) => job.status === "live" && job.expires_at !== null && new Date(job.expires_at) > new Date();
+export const isLive = (job: Job) => job.status === "live" && job.expires_at !== null && new Date(job.expires_at) > new Date() && inMarket(job.country);
 
 /** Every live job, for the sitemap; the XML feed leaves out imported jobs (their employers syndicate them already). */
 export async function allLiveJobs(limit = 5000, imported = true): Promise<Job[]> {

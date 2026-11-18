@@ -7,7 +7,7 @@
  * (every imported job sends applicants to the employer's own page).
  */
 import "server-only";
-import { IMPORT } from "./config";
+import { IMPORT, inMarket } from "./config";
 import { isCountry } from "./countries";
 import { hasDatabase, newId, newToken, query } from "./db";
 import { refreshJobPages } from "@/lib/job-cache";
@@ -61,7 +61,8 @@ async function importFeed(feed: Feed, budget: { left: number }): Promise<FeedRes
   budget.left -= fresh.length;
 
   const details = await mapLimit(fresh, 6, (l) => jobFromListing(feed, l).catch(() => null));
-  const jobs = details.filter((j): j is FeedJob => j !== null && isCountry(j.country) && j.country !== "JP");
+  // Only jobs in the markets served (US and Japan, 18 Nov 2026); Japanese jobs are never imported.
+  const jobs = details.filter((j): j is FeedJob => j !== null && isCountry(j.country) && inMarket(j.country) && j.country !== "JP");
   const urls: string[] = [];
   if (jobs.length) {
     const companyId = await companyFor(feed);

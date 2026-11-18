@@ -89,6 +89,10 @@ export const CREW_SIZES = ["1-5", "6-15", "16-50", "51+"] as const;
 export const UPLOAD = { maxBytes: 4_000_000, types: ["application/pdf", "image/jpeg", "image/png", "image/heic", "application/msword", "application/vnd.openxmlformats-officedocument.wordprocessingml.document"] } as const;
 export const collectsSeekers = (country: string) => country !== "JP" || JAPAN_SEEKER_DATA;
 
+/** The markets Ittsui Works serves (Samuel, 18 Nov 2026: focus, after Rockefeller's letters): jobs, forms and menus. */
+export const MARKETS = ["US", "JP"] as const;
+export const inMarket = (country: string) => (MARKETS as readonly string[]).includes(country);
+
 /**
  * Job import, the way Indeed began (lib/feeds.ts): technician jobs from employers' public careers pages, each on its
  * own page with a link back to apply. Runs every day (vercel.json cron /api/cron/import). A job leaves the site the

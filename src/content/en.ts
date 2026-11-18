@@ -11,7 +11,7 @@ export const en = {
     privacyTitle: "Privacy policy | Ittsui Works",
     termsTitle: "Terms | Ittsui Works",
     jobsTitle: "Jobs for HVAC, data center and marine technicians | Ittsui Works",
-    jobsDescription: "Live jobs for commercial HVAC, data center and marine technicians, in any country. Apply in a minute, free, or get new jobs by email.",
+    jobsDescription: "Live jobs for commercial HVAC, electrical, data center and marine technicians in the United States and Japan. Apply in a minute, free, or get new jobs by email.",
     postJobTitle: "Post a job, free | Ittsui Works",
     postJobDescription: "Post a job for HVAC, data center or marine technicians, free. Live the moment you confirm your email, with applications straight to your inbox.",
     postProjectTitle: "Submit a commercial project | Ittsui Works",
@@ -296,7 +296,7 @@ export const en = {
   jobs: {
     label: "Jobs",
     title: "Jobs for HVAC, data center and marine technicians",
-    intro: "Live jobs from companies in any country. Apply in a minute, free.",
+    intro: "Open jobs from employers' own careers pages in the United States and Japan. You apply on the employer's site, free.",
     trade: "Trade",
     country: "Country",
     allTrades: "All trades",
