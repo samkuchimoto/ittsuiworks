@@ -113,9 +113,9 @@ export function Done({ title, text, children }: { title: string; text: string; c
   );
 }
 
-export function Select({ id, name, options, bad, defaultValue = "", placeholder, onChange }: { id: string; name: string; options: [string, string][]; bad?: true; defaultValue?: string; placeholder?: string; onChange?: (v: string) => void }) {
+export function Select({ id, name, options, bad, defaultValue = "", placeholder, onChange, optional }: { optional?: boolean; id: string; name: string; options: [string, string][]; bad?: true; defaultValue?: string; placeholder?: string; onChange?: (v: string) => void }) {
   return (
-    <select id={id} name={name} required defaultValue={defaultValue} className="field" aria-invalid={bad} onChange={onChange ? (e) => onChange(e.target.value) : undefined}>
+    <select id={id} name={name} required={!optional} defaultValue={defaultValue} className="field" aria-invalid={bad} onChange={onChange ? (e) => onChange(e.target.value) : undefined}>
       {placeholder !== undefined && (
         <option value="" disabled>
           {placeholder}
@@ -319,14 +319,14 @@ const pill =
   "inline-flex rounded-full border border-line px-4 py-2 text-[14.5px] text-ink transition peer-checked:border-navy peer-checked:bg-navy peer-checked:text-white peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-orange";
 
 /** Pick one or more (checkboxes) or exactly one (radios), shown as pills. */
-function Pills({ name, legend, options, multiple, bad, defaults = [] }: { name: string; legend: string; options: [string, string][]; multiple?: boolean; bad?: true; defaults?: string[] }) {
+function Pills({ name, legend, options, multiple, bad, defaults = [], optional }: { name: string; legend: string; options: [string, string][]; multiple?: boolean; bad?: true; defaults?: string[]; optional?: boolean }) {
   return (
     <fieldset className="sm:col-span-2">
       <legend className="mb-2 text-[14px] font-semibold text-navy">{legend}</legend>
       <div className="flex flex-wrap gap-2" aria-invalid={bad}>
         {options.map(([value, label]) => (
           <label key={value} className="cursor-pointer">
-            <input type={multiple ? "checkbox" : "radio"} name={name} value={value} required={!multiple} defaultChecked={defaults.includes(value)} className="peer sr-only" />
+            <input type={multiple ? "checkbox" : "radio"} name={name} value={value} required={!multiple && !optional} defaultChecked={defaults.includes(value)} className="peer sr-only" />
             <span className={pill}>{label}</span>
           </label>
         ))}
@@ -441,6 +441,15 @@ export function RequestForm({ lang, t, countries }: { lang: Locale; t: NetText &
       <input type="hidden" name="lang" value={lang} />
       <input type="hidden" name="kind" value="talent_request" />
       <Honeypot />
+      {/* The price and the next steps, where the buyer decides (18 Nov 2026). */}
+      <div className="rounded-md border border-line bg-sky/40 p-4 text-[14.5px] text-ink sm:col-span-2">
+        <p className="font-semibold text-navy">{t.request.nextTitle}</p>
+        <ol className="mt-2 list-decimal space-y-1 pl-5">
+          {t.request.nextSteps.map((s) => (
+            <li key={s}>{s}</li>
+          ))}
+        </ol>
+      </div>
       {/* Step 1: the role, where and when. Hidden fields still post with the form. */}
       <div key={preset ? "preset" : "plain"} className={step === 1 ? "contents" : "hidden"}>
         <StepHead t={f} n={1} title={t.request.role} />
@@ -449,7 +458,7 @@ export function RequestForm({ lang, t, countries }: { lang: Locale; t: NetText &
           <input id="rq-role" name="role" required maxLength={80} placeholder={f.roleTitleHint} className="field placeholder:text-mute/70" aria-invalid={off("role")} />
         </Field>
         <Field id="rq-headcount" label={f.headcount}>
-          <Select id="rq-headcount" name="headcount" options={HEADCOUNTS.map((k) => [k, `${k} ${t.ui.people}`])} placeholder={f.select} bad={off("headcount")} />
+          <Select id="rq-headcount" name="headcount" optional options={HEADCOUNTS.map((k) => [k, `${k} ${k === "1" ? t.ui.person : t.ui.people}`])} placeholder={f.select} bad={off("headcount")} />
         </Field>
         <Field id="rq-country" label={f.country}>
           <Select id="rq-country" name="country" options={usOnly} placeholder={f.select} defaultValue="US" bad={off("country")} />
@@ -461,7 +470,7 @@ export function RequestForm({ lang, t, countries }: { lang: Locale; t: NetText &
           <input id="rq-start" name="start" type="date" required className="field" aria-invalid={off("start")} />
         </Field>
         <Field id="rq-duration" label={f.duration}>
-          <Select id="rq-duration" name="duration" options={DURATIONS.map((k) => [k, t.ui.durations[k]])} placeholder={f.select} bad={off("duration")} />
+          <Select id="rq-duration" name="duration" optional options={DURATIONS.map((k) => [k, t.ui.durations[k]])} placeholder={f.select} bad={off("duration")} />
         </Field>
         <NextButton t={f} onClick={next} missing={missing.length > 0} />
       </div>
@@ -611,7 +620,7 @@ export function TechnicianForm({ lang, t, countries }: { lang: Locale; t: NetTex
         <textarea id="tc-licenses" name="licenses" rows={3} maxLength={600} placeholder={f.licensesHeldHint} className="field resize-y placeholder:text-mute/70" aria-invalid={bad("licenses")} />
       </Field>
       <Field id="tc-years" label={f.yearsCommercial}>
-        <Select id="tc-years" name="years" options={EXPERIENCE.map((k) => [k, `${k} ${t.ui.yearsSuffix}`])} placeholder={f.select} bad={bad("years")} />
+        <Select id="tc-years" name="years" optional options={EXPERIENCE.map((k) => [k, `${k} ${t.ui.yearsSuffix}`])} placeholder={f.select} bad={bad("years")} />
       </Field>
       <Field id="tc-rate" label={f.rate}>
         <input id="tc-rate" name="rate" maxLength={60} placeholder={f.rateHint} className="field placeholder:text-mute/70" aria-invalid={bad("rate")} />
@@ -663,15 +672,15 @@ export function PartnerForm({ lang, t, countries }: { lang: Locale; t: NetText &
         <input id="pt-license" name="license" maxLength={80} aria-describedby="pt-license-hint" className="field" aria-invalid={bad("license")} />
         <p id="pt-license-hint" className="mt-1.5 text-[13px] text-mute">{f.stateLicenseHint}</p>
       </Field>
-      <Pills name="insurance" legend={f.insurance} options={ynOptions(t.ui)} bad={bad("insurance")} />
+      <Pills name="insurance" legend={f.insurance} options={ynOptions(t.ui)} bad={bad("insurance")} optional />
       <Field id="pt-insurance-details" label={f.insuranceDetails} wide>
         <input id="pt-insurance-details" name="insurance_details" maxLength={200} placeholder={f.insuranceDetailsHint} className="field placeholder:text-mute/70" />
       </Field>
       <Field id="pt-crew" label={f.crew}>
-        <Select id="pt-crew" name="crew" options={CREW_SIZES.map((k) => [k, k])} placeholder={f.select} bad={bad("crew")} />
+        <Select id="pt-crew" name="crew" optional options={CREW_SIZES.map((k) => [k, k])} placeholder={f.select} bad={bad("crew")} />
       </Field>
       <Field id="pt-size" label={f.typicalSize}>
-        <Select id="pt-size" name="size" options={sizeOptions(t.ui)} placeholder={f.select} bad={bad("size")} />
+        <Select id="pt-size" name="size" optional options={sizeOptions(t.ui)} placeholder={f.select} bad={bad("size")} />
       </Field>
       <Pills name="trades" legend={f.coreTrades} options={sourcingOptions(t.ui)} multiple bad={bad("trades")} />
       <Field id="pt-areas" label={f.areas} wide>

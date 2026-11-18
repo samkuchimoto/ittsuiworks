@@ -54,7 +54,7 @@ export const en = {
     ],
     language: "Language",
   },
-  facts: ["HVAC, electrical, data center and marine", "United States and Japan", "Free for technicians and trade partners"],
+  facts: ["HVAC, electrical, data center and marine", "United States and Japan", "Free to apply for technicians and trade partners"],
   latest: {
     label: "Live now",
     title: "Live Infrastructure Demand & Open Roles (US & Japan)",
@@ -177,7 +177,7 @@ export const en = {
   fees: {
     label: "Fees",
     title: "Free to apply. Fees on results, agreed in writing.",
-    intro: "$0 upfront for everyone. No small fees on this site: fees are only due on a hire or on paid project milestones, under a written agreement.",
+    intro: "$0 upfront for everyone. Nothing is charged on this site: fees are only due on a hire or on paid project milestones, under a written agreement.",
     items: [
       {
         tag: "For Technicians & Trade Partners",
@@ -272,6 +272,7 @@ export const en = {
     facilities: { datacenter: "Data center", industrial: "Industrial facility", commercial: "Commercial building", marine: "Marine or port", other: "Other" },
     yearsSuffix: "years",
     people: "technicians",
+    person: "technician",
     tradeShort: { hvac: "HVAC", datacenter: "Data center", marine: "Marine" },
     employment: { full_time: "Full time", part_time: "Part time", contract: "Contract", temporary: "Temporary" },
     payUnit: { hour: "an hour", month: "a month", year: "a year" },
@@ -370,6 +371,12 @@ export const en = {
     sent: "A person reads it, and a confirmation with a private link to your request is in your inbox. Replies come from contact@ittsuiworks.com.",
   },
   request: {
+    nextTitle: "What happens next",
+    nextSteps: [
+      "A person reads your request and replies by email.",
+      "You receive our recruiting agreement: 25% of first-year base pay, only if you hire someone we introduce.",
+      "You meet checked candidates and decide.",
+    ],
     label: "Technical recruiting and staffing",
     title: "Request Technicians",
     intro: "Commercial HVAC technicians, commercial electricians, data center and marine technicians, for direct hire or contract in the United States. Tell us the role; a person sources and screens for it.",
@@ -389,7 +396,7 @@ export const en = {
   join: {
     label: "Join the network",
     title: "Apply as a Technician or Trade Partner",
-    intro: "Free. Two paths: individual technicians, and licensed trade companies that take commercial subcontract work.",
+    intro: "Free to apply. Two paths: individual technicians, and licensed trade companies that take commercial subcontract work. A trade partner that wins a project we introduced pays 8% to 12% of each paid milestone, agreed in writing first.",
     choose: "Choose your path",
     tech: {
       tab: "Individual technician",
@@ -749,7 +756,7 @@ export const en = {
       },
       {
         h: "Requests, projects and fees",
-        p: "Requesting technicians and submitting a project are free. Any fee, such as a placement fee paid by an employer that hires a technician we introduced (placement is offered for US hires only, subject to US legal requirements), or a referral commission paid by a licensed contractor, is set in a separate written agreement signed before any introduction. Nothing is charged on this site. Technicians and trade partners are never charged.",
+        p: "Requesting technicians and submitting a project are free. Any fee, such as a placement fee paid by an employer that hires a technician we introduced (placement is offered for US hires only, subject to US legal requirements), or a referral commission paid by a licensed contractor, is set in a separate written agreement signed before any introduction. Nothing is charged on this site. Technicians are never charged. A trade partner pays a referral commission of 8% to 12% only on paid milestones of a project we introduced, under a written agreement signed first.",
       },
       {
         h: "Applications",

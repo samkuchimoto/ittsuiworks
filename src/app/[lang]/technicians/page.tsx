@@ -69,14 +69,14 @@ export default async function Technicians({ params, searchParams }: PageProps<"/
 
         {partners.length === 0 ? (
           <div className="mt-10 rounded-2xl bg-mist p-8">
-            <p className="font-display text-[26px] text-navy">No profiles listed{trade || state ? " for this filter" : " yet"}.</p>
+            <p className="font-display text-[26px] text-navy">{trade || state ? "No public profile for this filter yet." : "Profiles appear here as technicians confirm them."}</p>
             <p className="mt-3 max-w-[40rem] text-[16px] leading-relaxed text-ink/80">
-              Technicians appear here once they confirm their own profile. You can still send us the role:{" "}
-              <a href="/request" className="font-semibold text-navy underline underline-offset-4">
-                request technicians
-              </a>
-              .
+              A profile is public only with the technician&apos;s consent. For each role we also search our applicants and the trade. Send us the role
+              to start the search.
             </p>
+            <a href="/request" className="mt-5 inline-flex rounded-md bg-navy px-6 py-3 text-[15px] font-semibold text-white hover:bg-navy-deep">
+              Request technicians
+            </a>
           </div>
         ) : (
           <div className="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
