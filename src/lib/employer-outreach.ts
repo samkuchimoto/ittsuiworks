@@ -29,7 +29,8 @@ export const EMPLOYER_TEMPLATES = {
       "",
       "Ittsui Works recruits commercial {trade} technicians for direct hire. We present a candidate only after checking their identity, work history and the licenses the role needs, and only with the candidate's consent.",
       "",
-      "Our fee is 25% of first-year base pay, owed only if you hire someone we introduce, with a free replacement if the hire leaves within 90 days. Sending us the role costs nothing.",
+      // The guarantee exactly as the approved terms state it, conditions included (Samuel, 22 Nov 2026).
+      "Our fee is 25% of first-year base pay, owed only if you hire someone we introduce. If the hire leaves within 90 days of starting, we provide a replacement at no extra fee, provided the invoice was paid within 15 days (not for layoffs or a changed role). Sending us the role costs nothing. Full terms: {deal}",
       "",
       "If the role is still open, reply here or send the details in two minutes:",
       "{link}",

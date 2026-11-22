@@ -386,7 +386,13 @@ export default async function Admin({ params, searchParams }: PageProps<"/[lang]
                             </label>
                           ))}
                           {kind === "talent_request" && (
-                            <input name="candidates" maxLength={300} placeholder="Candidates introduced (IDs, e.g. AB12CD34, IW-1A2B3C)" className="field min-w-[16rem] py-2 text-[14px]" />
+                            <textarea
+                              name="candidates"
+                              rows={2}
+                              maxLength={3000}
+                              placeholder={"Candidates introduced, one per line: ID | how and when they said yes to this employer\ne.g. AB12CD34 | phone call 22 Nov, 14:05, with Pat"}
+                              className="field min-w-[22rem] py-2 text-[14px]"
+                            />
                           )}
                           <input name="note" maxLength={500} placeholder="Note (lookup URL, who confirmed...)" className="field min-w-[14rem] flex-1 py-2 text-[14px]" />
                           <button className="rounded-md bg-navy px-4 py-2 text-[14px] font-semibold text-white">Save stage</button>

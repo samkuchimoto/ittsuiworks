@@ -31,9 +31,10 @@ export const isClient = (kind: Kind) => kind === "talent_request" || kind === "p
 const PEOPLE_STAGES = ["received", "qualified", "verifying", "verified", "available", "declined"] as const;
 const CLIENT_STAGES = ["received", "contacted", "qualifying", "proposal", "matching", "agreement", "in_progress", "completed", "repeat", "lost"] as const;
 /**
- * Employers (22 Nov 2026). Every key of the earlier list stays valid, so no saved row changes and every earlier move
- * still works: "matching", "in_progress" and "completed" stay as earlier stages (RETIRED_STAGES, shown in the stage
- * menu only on a row already there), with the same gates as before.
+ * Employers (22 Nov 2026). Every key of the earlier list stays valid, so no saved row changes: "matching",
+ * "in_progress" and "completed" are RETIRED_STAGES. A row already there keeps it and can move on to a current step
+ * (through that step's gates), but setStage refuses any NEW move into a retired stage, so an old stage value can
+ * never route around the funding, agreement, candidate or hire checks.
  */
 const EMPLOYER_STAGES = ["received", "contacted", "qualifying", "proposal", "matching", "agreement", "introduced", "interview", "hired", "invoiced", "in_progress", "completed", "repeat", "lost"] as const;
 export const STAGES: Record<Kind, readonly string[]> = {
@@ -108,7 +109,7 @@ export const CHECKS: Record<Kind, { key: string; label: string }[]> = {
     { key: "agreement", label: "Written placement agreement signed (fee, guarantee, payment terms)" },
     {
       key: "candidate_ok",
-      label: "Each candidate introduced said yes to this employer by name before their identity was shared (name them in Candidates: each must be Verified, checked by the server)",
+      label: "Each candidate's yes to this employer, one line per candidate under Candidates (ID | how and when they agreed). Recorded by the admin, not independently verified; the server checks only that each candidate is Verified",
     },
     { key: "hire_confirmed", label: "Hire confirmed in writing by the employer: start date and first-year base pay (both in the note)" },
   ],
@@ -122,7 +123,8 @@ export const CHECKS: Record<Kind, { key: string; label: string }[]> = {
  * Employers: the checks each stage needs (22 Nov 2026). A vacancy counts as qualified only once the hiring manager
  * confirms it is approved and funded (a public job post does not prove a budget); Signed Agreement and every stage
  * after it need the signed agreement, as before; a candidate is introduced only when Verified and with their yes; a
- * hire is invoiced only once confirmed in writing. The earlier stages keep the gate they had (the agreement only).
+ * hire is invoiced only once confirmed in writing. Repeat Customer needs the whole chain (it follows a paid hire).
+ * The retired stages keep their old gate only for rows already there: nothing new can move into them.
  */
 const EMPLOYER_GATES: Record<string, string[]> = {
   qualifying: ["funded"],
@@ -134,7 +136,7 @@ const EMPLOYER_GATES: Record<string, string[]> = {
   invoiced: ["funded", "agreement", "candidate_ok", "hire_confirmed"],
   in_progress: ["agreement"],
   completed: ["agreement"],
-  repeat: ["agreement"],
+  repeat: ["funded", "agreement", "candidate_ok", "hire_confirmed"],
 };
 /** The checks a stage needs: Verified and later for people, Agreement and later for clients (Lost needs none). */
 export function gateFor(kind: Kind, stage: string): { key: string; label: string }[] {
@@ -282,37 +284,58 @@ export async function setStage(id: string, stage: string, ticked: string[], note
   const [row] = await query<Inquiry>(`SELECT * FROM inquiries WHERE id = $1`, [id]);
   if (!row || !isKind(row.kind)) return "Not found.";
   if (!STAGES[row.kind].includes(stage)) return `A ${row.kind} has no stage "${stage}".`;
+  // Retired stages: kept for rows already there, never a new destination (checked here, whatever the form sent).
+  if ((RETIRED_STAGES[row.kind] ?? []).includes(stage) && stage !== row.stage) return `Not saved: "${labelFor(row.kind, stage)}" is retired, kept only for records already there. Choose a current step.`;
   if (row.kind === "technician" && stage !== "received" && stage !== "declined" && !row.consent_at) return "No consent on record: ask the qualification and consent questions first.";
   const needed = gateFor(row.kind, stage);
   const checks = { ...row.checks };
   const day = new Date().toISOString().slice(0, 10);
-  // Candidates introduced to an employer (22 Nov 2026): each one is checked here, never taken on trust.
-  let introduced: string[] = [];
-  if (row.kind === "talent_request" && (candidates.trim() || (ticked.includes("candidate_ok") && needed.some((c) => c.key === "candidate_ok") && !checks.candidate_ok))) {
+  // Candidates introduced to an employer (22 Nov 2026): each must be Verified (checked here) and comes with its own
+  // record of how and when they agreed to THIS employer (written by the admin; kept on both records for audit).
+  let introduced: Candidate[] = [];
+  const atIntroduction = needed.some((c) => c.key === "candidate_ok");
+  if (row.kind === "talent_request" && (candidates.trim() || (ticked.includes("candidate_ok") && atIntroduction && !checks.candidate_ok))) {
+    if (!atIntroduction) return "Not saved: candidates are introduced at Authorized Candidate Introduction or a later step.";
+    if (!ticked.includes("candidate_ok") && !checks.candidate_ok) return "Not saved: tick the candidate check to introduce them.";
     const result = await verifiedCandidates(candidates);
     if ("error" in result) return `Not saved: ${result.error}`;
-    introduced = result.ids;
+    introduced = result.candidates;
     const earlier = checks.candidate_ok ? `${checks.candidate_ok}; ` : "";
-    if (checks.candidate_ok || ticked.includes("candidate_ok")) checks.candidate_ok = `${earlier}${day}: ${introduced.join(", ")}${note ? ` (${note})` : ""}`;
+    const lines = introduced.map((c) => `${c.id} (yes recorded by admin: ${c.consent})`).join("; ");
+    checks.candidate_ok = `${earlier}${day}: ${lines}${note ? ` [${note}]` : ""}`.slice(0, 4000);
   }
   for (const c of needed) if (ticked.includes(c.key) && !checks[c.key]) checks[c.key] = `${day}${note ? `: ${note}` : ""}`;
   const missing = needed.filter((c) => !checks[c.key]);
   if (missing.length) return `Tick every check first: ${missing.map((c) => c.key).join(", ")}.`;
   await query(`UPDATE inquiries SET stage = $2, stage_at = now(), checks = $3 WHERE id = $1`, [id, stage, JSON.stringify(checks)]);
-  await addEvent(id, { kind: "stage", text: `${labelFor(row.kind, row.stage)} -> ${labelFor(row.kind, stage)}${introduced.length ? ` (candidates ${introduced.join(", ")})` : ""}${note ? `: ${note}` : ""}` });
+  await addEvent(id, { kind: "stage", text: `${labelFor(row.kind, row.stage)} -> ${labelFor(row.kind, stage)}${introduced.length ? ` (candidates ${introduced.map((c) => c.id).join(", ")})` : ""}${note ? `: ${note}` : ""}` });
+  // The same yes, on each candidate's own record: who they agreed to meet, and how we know.
+  const employer = row.company || row.name;
+  for (const c of introduced) {
+    await addEvent(c.inquiryId, { kind: "consent", text: `Agreed to be introduced to ${employer} (employer lead ${row.id.toUpperCase()}): ${c.consent}. Recorded by an admin, not independently verified.` });
+  }
   return null;
 }
 
+type Candidate = { id: string; inquiryId: string; consent: string };
+
 /**
- * The candidates named for an introduction: pipeline IDs (as the admin shows them) or IW- profile IDs. Each must be a
- * technician at Verified or Available for Matching, with consent on record and every technician check ticked
- * (license, identity, work history). Applying through Indeed or the site never makes anyone verified.
+ * The candidates named for an introduction, one per line: "ID | how and when they agreed to be introduced to this
+ * employer". The ID is a pipeline ID (as the admin shows it) or an IW- profile ID. Each must be a technician at
+ * Verified or Available for Matching, with consent on record and every technician check ticked (license, identity,
+ * work history): applying through Indeed or the site never makes anyone verified. Every line needs its own record of
+ * the candidate's yes to this employer; a general application consent is not enough. All lines are checked before
+ * anything is saved.
  */
-async function verifiedCandidates(raw: string): Promise<{ ids: string[] } | { error: string }> {
-  const tokens = [...new Set(raw.split(/[s,;]+/).map((t) => t.trim()).filter(Boolean))].slice(0, 20);
-  if (!tokens.length) return { error: "name each candidate introduced (pipeline ID or IW- profile ID)." };
-  const ids: string[] = [];
-  for (const token of tokens) {
+async function verifiedCandidates(raw: string): Promise<{ candidates: Candidate[] } | { error: string }> {
+  const lines = raw.split(/\r?\n/).map((l) => l.trim()).filter(Boolean).slice(0, 20);
+  if (!lines.length) return { error: "name each candidate introduced, one per line: ID | how and when they agreed to meet this employer." };
+  const out: Candidate[] = [];
+  for (const line of lines) {
+    const m = line.match(/^([A-Za-z0-9-]{6,12})\s*[|:]\s*(.+)$/);
+    const evidence = m?.[2].trim() ?? "";
+    if (!m || evidence.length < 12) return { error: `"${line.slice(0, 40)}": write the candidate's ID, then how and when they agreed to be introduced to this employer (for example: AB12CD34 | phone call 22 Nov, 14:05, with Pat).` };
+    const token = m[1];
     let inquiryId = token.toLowerCase();
     if (/^iw-[0-9a-f]{6}$/i.test(token)) {
       const [profile] = await query<{ inquiry_id: string | null }>(`SELECT inquiry_id FROM partners WHERE id = $1`, [token.toUpperCase()]);
@@ -326,15 +349,17 @@ async function verifiedCandidates(raw: string): Promise<{ ids: string[] } | { er
     if (!t.consent_at || (t.stage !== "verified" && t.stage !== "available") || missing.length) {
       return { error: `${token.toUpperCase()} is not Verified (stage ${labelFor("technician", t.stage)}${missing.length ? `, missing ${missing.join(", ")}` : ""}${t.consent_at ? "" : ", no consent"}). Nobody is introduced before their checks.` };
     }
-    ids.push(t.id.toUpperCase());
+    if (out.some((c) => c.inquiryId === t.id)) return { error: `${t.id.toUpperCase()} is named twice.` };
+    out.push({ id: t.id.toUpperCase(), inquiryId: t.id, consent: evidence.slice(0, 300) });
   }
-  return { ids };
+  return { candidates: out };
 }
 
 // ------------------------------------------------------------------ activity: contacts, follow-ups, proposals
 
 export const EVENT_KINDS = ["call", "email", "meeting", "note", "followup", "proposal"] as const;
-export type EventKind = (typeof EVENT_KINDS)[number] | "stage";
+/** "consent": a candidate's yes to one employer, written on the candidate's record when they are introduced. */
+export type EventKind = (typeof EVENT_KINDS)[number] | "stage" | "consent";
 export type InquiryEvent = {
   id: string;
   inquiry_id: string;

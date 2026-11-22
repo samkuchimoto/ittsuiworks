@@ -104,7 +104,7 @@ export async function adminCloseJobAction(form: FormData) {
 export async function adminStageAction(form: FormData) {
   if (!(await isAdmin())) redirect("/admin");
   const { setStage } = await import("@/lib/pipeline");
-  const error = await setStage(read(form, "id", 12), read(form, "stage", 20), form.getAll("checks").map(String), read(form, "note", 500), read(form, "candidates", 300));
+  const error = await setStage(read(form, "id", 12), read(form, "stage", 20), form.getAll("checks").map(String), read(form, "note", 500), read(form, "candidates", 3000));
   redirect(`/admin?msg=${encodeURIComponent(error ?? "Saved.")}#pipeline`);
 }
 
