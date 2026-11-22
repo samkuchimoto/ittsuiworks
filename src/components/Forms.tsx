@@ -2,7 +2,8 @@
 
 import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
 import type { Dict } from "@/content";
-import { CREW_SIZES, CURRENCIES, DURATIONS, EMPLOYMENT, ENGAGEMENTS, EXPERIENCE, HEADCOUNTS, PAY_UNITS, POWER, PROJECT_SIZES, SOURCING_TRADES, STARTS, TRADES } from "@/lib/config";
+import { attachAttribution } from "@/lib/attribution";
+import { CREW_SIZES, CURRENCIES, DURATIONS, EMPLOYMENT, ENGAGEMENTS, EXPERIENCE, HEADCOUNTS, PAY_UNITS, POWER, PROJECT_SIZES, SOURCING_TRADES, STARTS, TRADES, campaignById } from "@/lib/config";
 import { currencyFor } from "@/lib/countries";
 import { pathFor, type Locale } from "@/lib/site";
 import { ArrowIcon, CheckIcon } from "./Icons";
@@ -20,7 +21,10 @@ export function useSubmit(endpoint: string) {
     setStatus("sending");
     setInvalid([]);
     try {
-      const response = await fetch(endpoint, { method: "POST", body: new FormData(event.currentTarget) });
+      const sent = new FormData(event.currentTarget);
+      // Which outreach link brought this visit, if any (lib/attribution.ts): never personal data.
+      attachAttribution(sent);
+      const response = await fetch(endpoint, { method: "POST", body: sent });
       const body = (await response.json().catch(() => ({}))) as Result;
       setResult(body);
       if (body.ok) return setStatus("done");
@@ -347,6 +351,8 @@ type NetText = { form: Dict["form"]; ui: Dict["ui"] };
 /**
  * What the home page's quick selector chose (16 Nov 2026): ?trade= and ?hub=, read in the browser so the form pages stay
  * static. The hub fills the country and the place; the trade is ticked. The visitor can change everything.
+ * An outbound campaign link (lib/config.ts CAMPAIGNS, 22 Nov 2026) also names its city: utm_campaign=miami-electrical
+ * with hub=fl fills "Miami, FL" instead of "Florida", as long as the link's hub is the campaign's own.
  */
 type Preset = { trade: string; country: string; place: string } | null;
 function usePreset(places: Dict["selector"]["places"]): Preset {
@@ -361,7 +367,9 @@ function usePreset(places: Dict["selector"]["places"]): Preset {
       us: { country: "US", place: places.us },
       jp: { country: "JP", place: places.jp },
     };
-    if (trade || hubs[hub]) setPreset({ trade, country: hubs[hub]?.country ?? "", place: hubs[hub]?.place ?? "" });
+    const campaign = campaignById(q.get("utm_campaign") ?? undefined);
+    const place = campaign?.place && campaign.hub === hub ? campaign.place : (hubs[hub]?.place ?? "");
+    if (trade || hubs[hub]) setPreset({ trade, country: hubs[hub]?.country ?? "", place });
   }, [places]);
   return preset;
 }

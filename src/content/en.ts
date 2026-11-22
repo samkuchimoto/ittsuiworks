@@ -495,6 +495,8 @@ export const en = {
     open: "Your project is with companies in your trade.",
     waiting: "Your project waits until the power is secured, the budget approved and the start date set. Update it below when it is ready.",
     taken: "Companies that have your contact details: {n} of 3.",
+    /** Since 16 Nov 2026 projects are no longer sent to companies automatically (PRICING.approved = false). */
+    retired: "Projects now go through our team: a person reads yours and matches it with a licensed trade company after checking its license and insurance. Nothing is sent to companies automatically. To go ahead, reply to your confirmation email or write to contact@ittsuiworks.com.",
     update: "Update my project",
     close: "Close my project",
     closed: "Your project is closed.",
@@ -628,6 +630,10 @@ export const en = {
       matching: "Matching providers",
       agreement: "Agreement",
       engaged: "Agreement",
+      introduced: "Candidates introduced",
+      interview: "Interviews",
+      hired: "Hire confirmed",
+      invoiced: "Hire confirmed",
       in_progress: "In progress",
       completed: "Completed",
       repeat: "Completed",
@@ -752,7 +758,8 @@ export const en = {
   },
   terms: {
     title: "Terms",
-    updated: "Last updated: November 16, 2026",
+    // The fee clauses (90-day replacement, 8% to 12% commission) were last changed on 18 Nov 2026.
+    updated: "Last updated: November 18, 2026",
     sections: [
       { h: "Who we are", p: "Ittsui Works is operated by Kuchimoto LLC, a Wyoming limited liability company. Write to contact@ittsuiworks.com with any question." },
       {
@@ -797,7 +804,7 @@ export const en = {
       },
       {
         h: "What we collect",
-        p: "Only what you type into our forms. Technician applications: name, email, phone or WhatsApp, city and state, trade, licenses and certifications, years of experience, target rate, availability, any file you upload, and the consent you gave. Trade partners: company, contact name, email, phone, license number, insurance answer, crew size, trades, service areas and project size. Employers and project owners: company, name, role, email, phone and the role or project. Job board: the jobs companies post, applications to them and job alerts. Official orders on the deal page: legal company name, authorized signer and job title, business email, phone, billing address, website, an optional EIN or PO number and, to prevent fraud, the IP address and browser the order came from. The site sets one cookie, which remembers the language you chose.",
+        p: "Only what you type into our forms. Technician applications: name, email, phone or WhatsApp, city and state, trade, licenses and certifications, years of experience, target rate, availability, any file you upload, and the consent you gave. Trade partners: company, contact name, email, phone, license number, insurance answer, crew size, trades, service areas and project size. Employers and project owners: company, name, role, email, phone and the role or project. Job board: the jobs companies post, applications to them and job alerts. Official orders on the deal page: legal company name, authorized signer and job title, business email, phone, billing address, website, an optional EIN or PO number and, to prevent fraud, the IP address and browser the order came from. When you arrive through one of our links, the form also notes which link it was (for example the name of an email campaign) and the website that sent you, never anything that identifies you; your browser keeps this only until you close the tab. The site sets one cookie, which remembers the language you chose.",
       },
       {
         h: "Who sees it",
@@ -809,7 +816,7 @@ export const en = {
       },
       {
         h: "Emails to businesses",
-        p: "We may write to companies in our trades at a business email address they publish on their own website, about Ittsui Works. Every such email says who we are and how to stop them in one click, and we keep a list of addresses that asked us to stop.",
+        p: "We may write to companies in our trades, at a business email address they publish or that their staff gave us, about Ittsui Works or about a vacancy they have published. Every such email says who we are and how to stop them, and we keep a list of addresses that asked us to stop.",
       },
       {
         h: "How long we keep it",

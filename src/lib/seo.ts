@@ -9,5 +9,8 @@ export function alternates(lang: Locale, path: string, canonicalLang: Locale = l
   };
 }
 
-/** Private pages (accounts, leads, projects, alerts): never in search results. */
-export const privatePage: Metadata = { robots: { index: false, follow: false } };
+/**
+ * Private pages (accounts, leads, projects, alerts, requests, admin): never in search results, and their URL (which
+ * holds the private token or the admin key) is never sent to another site in a Referer header.
+ */
+export const privatePage: Metadata = { robots: { index: false, follow: false }, referrer: "no-referrer" };

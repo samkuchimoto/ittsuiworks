@@ -6,7 +6,7 @@ import { projectAction } from "@/app/actions";
 import { Field } from "@/components/Forms";
 import { Card, Notice, Shell } from "@/components/Shell";
 import { Label } from "@/components/Typo";
-import { LEAD_SLOTS, POWER, STARTS } from "@/lib/config";
+import { LEAD_SLOTS, POWER, STARTS, paymentsOn } from "@/lib/config";
 import { countryName } from "@/lib/countries";
 import { openProject } from "@/lib/market";
 import { privatePage } from "@/lib/seo";
@@ -25,7 +25,10 @@ export default async function ProjectPage({ params }: PageProps<"/[lang]/project
   const t = getDictionary(lang);
   const pr = t.project;
   const editable = p.status === "waiting" || p.status === "open";
-  const status = p.status === "closed" ? pr.closed : p.status === "waiting" ? pr.waiting : pr.open;
+  // The self-serve lead model is off (PRICING.approved = false): no company receives the project automatically, so
+  // the page says what happens now instead of "with companies in your trade" and a 0-of-3 counter.
+  const retired = !paymentsOn();
+  const status = p.status === "closed" ? pr.closed : retired ? pr.retired : p.status === "waiting" ? pr.waiting : pr.open;
 
   return (
     <Shell lang={lang} t={t}>
@@ -41,7 +44,7 @@ export default async function ProjectPage({ params }: PageProps<"/[lang]/project
           <div className="mt-6 space-y-3">
             {confirmed && <Notice>{pr.confirmed}</Notice>}
             <Notice tone={p.status === "waiting" ? "orange" : "sky"}>{status}</Notice>
-            {p.status !== "closed" && <p className="text-[15.5px] font-semibold text-navy">{fill(pr.taken, { n: Math.min(p.sold, LEAD_SLOTS) })}</p>}
+            {p.status !== "closed" && !retired && <p className="text-[15.5px] font-semibold text-navy">{fill(pr.taken, { n: Math.min(p.sold, LEAD_SLOTS) })}</p>}
           </div>
         </div>
       </section>

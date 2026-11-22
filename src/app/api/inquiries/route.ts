@@ -1,4 +1,5 @@
 import { getDictionary } from "@/content";
+import { readAttribution } from "@/lib/attribution";
 import { CREW_SIZES, DURATIONS, ENGAGEMENTS, EXPERIENCE, HEADCOUNTS, POWER, PROJECT_SIZES, SOURCING_TRADES, STARTS, UPLOAD, collectsSeekers } from "@/lib/config";
 import { fail, readForm, reader, refuse } from "@/lib/guard";
 import { createInquiry, isKind, type NewInquiry, type Upload } from "@/lib/pipeline";
@@ -143,6 +144,8 @@ export async function POST(request: Request) {
     };
   }
   if (invalid.length) return fail("invalid", 400, [...new Set(invalid)]);
+  // Which outreach link brought it (utm values and the referring host, cleaned again here): never personal data.
+  input.attribution = readAttribution(form);
   try {
     await createInquiry(input, files);
     return Response.json({ ok: true });

@@ -5,6 +5,16 @@
  * marks the company replied, so nothing more is sent), plus the one-click List-Unsubscribe header on every email.
  * Values: {company} {trade} {country} {postJob} {companies} {domain} {email} {address} {unsubscribe}
  */
+
+/**
+ * LEGACY (22 Nov 2026): every text in this file pitches the retired paid-lead model ("you only pay for the leads you
+ * take", $49 leads, featured jobs), not the current offers (25% placement fee, 8% to 12% project commission). Kept
+ * for the record and for the admin preview. While this is true, lib/outreach.ts sends none of them, even if
+ * OUTREACH.paused is turned off: new texts for the current offers, approved by Samuel, must replace these first.
+ * Employer emails for the current offer live in lib/employer-outreach.ts and are sent by hand only.
+ */
+export const LEGACY_LEAD_MODEL = true;
+
 export const OUTREACH_TEXTS = {
   en: {
     steps: [

@@ -2,6 +2,7 @@
 
 /** The buttons on the private pages (account, project, alerts, unsubscribe, admin). lib/market.ts does the work. */
 import { redirect } from "next/navigation";
+import { isAdminKey } from "@/lib/admin-key";
 import { POWER, STARTS, isTrade } from "@/lib/config";
 import { isToken, query } from "@/lib/db";
 import { refreshJobPages } from "@/lib/job-cache";
@@ -65,10 +66,8 @@ export async function unsubscribeAction(form: FormData) {
 
 // ------------------------------------------------------------------ admin (ADMIN_KEY)
 
-const adminOk = (form: FormData) => {
-  const key = process.env.ADMIN_KEY;
-  return Boolean(key) && key!.length >= 24 && read(form, "key", 100) === key;
-};
+/** Every admin button checks the key itself, on the server, in constant time (lib/admin-key.ts). */
+const adminOk = (form: FormData) => isAdminKey(read(form, "key", 100));
 
 /** CSV lines: company, email, website, country (2 letters), trade (hvac | datacenter | marine). */
 export async function importProspectsAction(form: FormData) {
@@ -164,9 +163,12 @@ export async function adminAddLeadAction(form: FormData) {
   if (country !== "US" && country !== "JP") back("Not added: the country is US or JP.");
   if (kind === "talent_request" && country !== "US") back("Not added: technician placement is for US hires only; enter a Japan buyer as a commercial project.");
   if (due && !/^\d{4}-\d{2}-\d{2}$/.test(due)) back("Not added: the follow-up date is not a date.");
+  // The outbound campaign this buyer belongs to (lib/config.ts CAMPAIGNS), so manual and link leads count together.
+  const { cleanAttribution } = await import("@/lib/attribution");
   const id = await createInquiry({
     kind: kind as "talent_request" | "project",
     source: "outbound",
+    attribution: cleanAttribution({ campaign: read(form, "campaign", 48), medium: "outbound" }),
     stage: "received",
     acknowledge: false,
     notify: false,
@@ -244,6 +246,79 @@ export async function adminEventAction(form: FormData) {
   else if (amount !== null && !(Number.isFinite(amount) && amount >= 0 && amount < 1e9)) msg = "Not logged: the amount is not a number.";
   else await addEvent(id, { kind: kind as (typeof EVENT_KINDS)[number], text, due: due || null, owner: read(form, "owner", 60), amount });
   redirect(`/admin/${key}?msg=${encodeURIComponent(msg)}#lead-${id}`);
+}
+
+// ------------------------------------------------------------------ employer outreach (admin, 22 Nov 2026)
+
+/**
+ * A person confirms the employer's vacancy is real: the role title and the link where it is posted (their careers
+ * page or a job board). Recorded as the "vacancy" check with the day; it opens the two email drafts for this lead.
+ * Employers only. Nothing is emailed.
+ */
+export async function adminVacancyAction(form: FormData) {
+  if (!adminOk(form)) redirect("/");
+  const key = read(form, "key", 100);
+  const id = read(form, "id", 12);
+  const back = (msg: string) => redirect(`/admin/${key}?msg=${encodeURIComponent(msg)}#lead-${id}`);
+  const url = read(form, "url", 300);
+  const role = read(form, "role", 80);
+  let ok = false;
+  try {
+    const parsed = new URL(url);
+    ok = (parsed.protocol === "https:" || parsed.protocol === "http:") && parsed.hostname.includes(".");
+  } catch {
+    ok = false;
+  }
+  if (!ok) back("Not saved: paste the vacancy's link (https://...).");
+  if (!role) back("Not saved: give the role title as the employer posted it.");
+  const { addEvent } = await import("@/lib/pipeline");
+  const day = new Date().toISOString().slice(0, 10);
+  const rows = await query<{ id: string }>(
+    `UPDATE inquiries SET checks = checks || jsonb_build_object('vacancy', $2::text),
+            data = CASE WHEN COALESCE(data->>'Role', '') = '' THEN data || jsonb_build_object('Role', $3::text) ELSE data END
+     WHERE id = $1 AND kind = 'talent_request' RETURNING id`,
+    [id, `${day}: ${url}`, role],
+  );
+  if (!rows.length) back("Not saved: only an employer request can have a vacancy.");
+  await addEvent(id, { kind: "note", text: `Vacancy verified: ${role}, ${url}`, owner: read(form, "owner", 60) });
+  back("Vacancy verified. The email drafts are open below.");
+}
+
+/**
+ * A person sent one of the two vacancy emails from their own mailbox: log it, with who approved it. Refused until
+ * Samuel approves the words (EMPLOYER_TEMPLATES=approved), without a verified vacancy, an email or an approver, and
+ * for a lead that is Lost. After the first email, a follow-up is planned four business days later.
+ */
+export async function adminTemplateSentAction(form: FormData) {
+  if (!adminOk(form)) redirect("/");
+  const key = read(form, "key", 100);
+  const id = read(form, "id", 12);
+  const back = (msg: string) => redirect(`/admin/${key}?msg=${encodeURIComponent(msg)}#lead-${id}`);
+  const { EMPLOYER_TEMPLATES, employerTemplatesApproved, isEmployerTemplate, renderEmployerEmail } = await import("@/lib/employer-outreach");
+  const { addEvent } = await import("@/lib/pipeline");
+  const template = read(form, "template", 20);
+  const approver = read(form, "approver", 60);
+  if (!employerTemplatesApproved()) back("Not logged: these emails wait for Samuel's approval of their words (EMPLOYER_TEMPLATES=approved in Vercel).");
+  if (!isEmployerTemplate(template)) back("Not logged: unknown email.");
+  if (!approver || read(form, "sent", 3) !== "yes") back("Not logged: name who approved it, and tick that you sent it yourself.");
+  const [lead] = await query<{ kind: string; stage: string; company: string; name: string; email: string; place: string; trades: string[]; data: Record<string, string>; checks: Record<string, string>; attribution: Record<string, string> }>(
+    `SELECT kind, stage, company, name, email, place, trades, data, checks, attribution FROM inquiries WHERE id = $1`,
+    [id],
+  );
+  if (!lead || lead.kind !== "talent_request") back("Not logged: only an employer request.");
+  if (lead.stage === "lost") back("Not logged: this lead is Lost.");
+  const mail = renderEmployerEmail(template as keyof typeof EMPLOYER_TEMPLATES, lead);
+  if ("missing" in mail) back(`Not logged: ${mail.missing}`);
+  await addEvent(id, { kind: "email", text: `Sent "${EMPLOYER_TEMPLATES[template as keyof typeof EMPLOYER_TEMPLATES].label}" to ${lead.email} by hand, approved by ${approver}`, owner: read(form, "owner", 60) || approver });
+  if (template === "first") {
+    const due = new Date();
+    for (let added = 0; added < 4; ) {
+      due.setUTCDate(due.getUTCDate() + 1);
+      if (due.getUTCDay() !== 0 && due.getUTCDay() !== 6) added++;
+    }
+    await addEvent(id, { kind: "followup", text: "No reply? Send the follow-up email", due: due.toISOString().slice(0, 10), owner: read(form, "owner", 60) || approver });
+  }
+  back(template === "first" ? "Logged. Follow-up planned in 4 business days." : "Logged.");
 }
 
 export async function adminEventDoneAction(form: FormData) {

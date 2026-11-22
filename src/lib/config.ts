@@ -89,9 +89,29 @@ export const CREW_SIZES = ["1-5", "6-15", "16-50", "51+"] as const;
 export const UPLOAD = { maxBytes: 4_000_000, types: ["application/pdf", "image/jpeg", "image/png", "image/heic", "application/msword", "application/vnd.openxmlformats-officedocument.wordprocessingml.document"] } as const;
 export const collectsSeekers = (country: string) => country !== "JP" || JAPAN_SEEKER_DATA;
 
-/** The markets Ittsui Works serves (Samuel, 18 Nov 2026: focus, after Rockefeller's letters): jobs, forms and menus. */
+/** The markets Ittsui Works serves (Samuel, 18 Nov 2026: focus): jobs, forms and menus. */
 export const MARKETS = ["US", "JP"] as const;
 export const inMarket = (country: string) => (MARKETS as readonly string[]).includes(country);
+
+/** The quick selector's hubs (16 Nov 2026). Japan is a hub for commercial projects only. */
+export const HUBS = ["tx", "fl", "us", "jp"] as const;
+export type Hub = (typeof HUBS)[number];
+
+/**
+ * Outbound campaigns (22 Nov 2026). Geography is an internal prospecting tactic, NOT a limit on where Ittsui Works
+ * does business: the site, its forms and SEO keep all four trades, the US and Japan. Outbound starts in Miami and
+ * Houston because we have technician supply there. Each campaign is a link to the existing /request form with the
+ * trade and hub chosen (place prefilled, all of it editable by the employer) and the campaign named in utm_campaign,
+ * so the lead shows which outreach brought it. Add a row here to give a new market or trade its own link and a line
+ * in the admin's campaign counts; a link with any other well-formed utm_campaign is still recorded.
+ */
+export type Campaign = { id: string; label: string; trade?: SourcingTrade; hub?: Hub; place?: string };
+export const CAMPAIGNS: readonly Campaign[] = [
+  { id: "miami-electrical", label: "Miami / South Florida: commercial electrical", trade: "electrical", hub: "fl", place: "Miami, FL" },
+  { id: "houston-hvac", label: "Houston / Texas: commercial HVAC", trade: "hvac", hub: "tx", place: "Houston, TX" },
+  { id: "referral-employer", label: "Employer referral (any trade, any US site)" },
+];
+export const campaignById = (id: string | undefined) => CAMPAIGNS.find((c) => c.id === id);
 
 /**
  * Job import, the way Indeed began (lib/feeds.ts): technician jobs from employers' public careers pages, each on its

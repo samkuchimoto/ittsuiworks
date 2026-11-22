@@ -1,3 +1,4 @@
+import { readAttribution } from "@/lib/attribution";
 import { fail, readForm, reader, refuse } from "@/lib/guard";
 import { getPartner, notifyRequest } from "@/lib/partners";
 import { createInquiry } from "@/lib/pipeline";
@@ -38,6 +39,7 @@ export async function POST(request: Request) {
     const reference = await createInquiry({
       kind: "talent_request",
       source: "directory",
+      attribution: readAttribution(form),
       name,
       email,
       phone: r.text("phone", 40),

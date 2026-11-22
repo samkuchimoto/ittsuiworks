@@ -18,7 +18,7 @@ import { countryName, isCountry } from "./countries";
 import { getState, hasDatabase, newId, query, releaseLock, setState, takeLock } from "./db";
 import { trySendMail } from "./mail";
 import { inviteToLead, withdrawInvite, type Project } from "./market";
-import { LEAD_IN_HAND_TEXTS, OPERATOR_TEXTS, OUTREACH_TEXTS } from "./outreach-texts";
+import { LEAD_IN_HAND_TEXTS, LEGACY_LEAD_MODEL, OPERATOR_TEXTS, OUTREACH_TEXTS } from "./outreach-texts";
 import { EMAIL, SITE_URL, pathFor } from "./site";
 
 const UA = "IttsuiWorksBot/1.0 (+https://ittsuiworks.com)";
@@ -62,7 +62,9 @@ export function outreachConfig() {
   const leadOffers = process.env.OUTREACH_LEAD_OFFERS === "on";
   const operators = process.env.OUTREACH_OPERATORS === "on";
   const paused = OUTREACH.paused;
-  return { live, paused, smtp, address, imap, sending: live && smtp && address && !paused, leadOffers, operators, countries: outreachCountries() };
+  // The texts still pitch the retired paid-lead model (outreach-texts.ts): locked until they are replaced.
+  const legacyTexts = LEGACY_LEAD_MODEL;
+  return { live, paused, legacyTexts, smtp, address, imap, sending: live && smtp && address && !paused && !legacyTexts, leadOffers, operators, countries: outreachCountries() };
 }
 
 // ------------------------------------------------------------------ domains and emails

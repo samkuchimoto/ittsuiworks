@@ -13,17 +13,22 @@ import {
   adminPartnerStatusAction,
   adminSaidYesAction,
   adminStageAction,
+  adminTemplateSentAction,
+  adminVacancyAction,
   importProspectsAction,
 } from "@/app/actions";
+import { isAdminKey } from "@/lib/admin-key";
+import { campaignLink } from "@/lib/attribution";
+import { EMPLOYER_TEMPLATES, employerTemplatesApproved, renderEmployerEmail, vacancyUrl } from "@/lib/employer-outreach";
 import { PARTNERS, confirmLink, headline, listPartners } from "@/lib/partners";
 import { Card, Shell } from "@/components/Shell";
 import { getDictionary } from "@/content";
 import { clicksByEmployer } from "@/lib/clicks";
-import { PRICING, SOURCING_TRADES, paymentsOn } from "@/lib/config";
+import { CAMPAIGNS, PRICING, SOURCING_TRADES, paymentsOn } from "@/lib/config";
 import { hasDatabase, query } from "@/lib/db";
 import { listJobs, marketStats } from "@/lib/market";
 import { isOperator, outreachConfig, outreachStats, renderLeadOffer, renderOutreach, type Prospect } from "@/lib/outreach";
-import { CHECKS, EVENT_KINDS, KIND_LABEL, STAGES, eventsFor, labelFor, listInquiries, openFollowups } from "@/lib/pipeline";
+import { CHECKS, EVENT_KINDS, KIND_LABEL, RETIRED_STAGES, STAGES, eventsFor, labelFor, listInquiries, nextAction, openFollowups } from "@/lib/pipeline";
 import { privatePage } from "@/lib/seo";
 import { KIND_LABEL as DEAL_KIND_LABEL } from "@/content/deal";
 import { COMMISSION, formatAddress, listDealOrders } from "@/lib/deal";
@@ -35,8 +40,7 @@ export const metadata: Metadata = privatePage;
 export default async function Admin({ params, searchParams }: PageProps<"/[lang]/admin/[key]">) {
   const { lang, key } = await params;
   await connection();
-  const secret = process.env.ADMIN_KEY;
-  if (lang !== "en" || !secret || secret.length < 24 || key !== secret || !hasDatabase()) notFound();
+  if (lang !== "en" || !isAdminKey(key) || !hasDatabase()) notFound();
   const t = getDictionary("en");
   const { imported, msg: rawMsg, deal: rawDeal } = await searchParams;
   const msg = typeof rawMsg === "string" ? rawMsg.slice(0, 200) : "";
@@ -68,7 +72,7 @@ export default async function Admin({ params, searchParams }: PageProps<"/[lang]
   // The two emails waiting for Samuel's approval, exactly as they would go out (the lead one with an example project).
   const waiting = [
     {
-      label: `Lead in hand (${cfg.leadOffers ? "on" : "waiting for approval"}), example project, as it would go to ${contractor?.company}`,
+      label: `LEGACY lead model, locked: lead in hand (${cfg.leadOffers ? "on" : "off"}), example project, as it would have gone to ${contractor?.company}`,
       mail: contractor
         ? renderLeadOffer(contractor, {
             title: "Chiller replacement for a 4 MW data hall (example)",
@@ -80,9 +84,14 @@ export default async function Admin({ params, searchParams }: PageProps<"/[lang]
           })
         : null,
     },
-    { label: `Operator first email (${cfg.operators ? "on" : "waiting for approval"}), as it would go to ${operator[0]?.company}`, mail: operator[0] ? renderOutreach(operator[0], 0) : null },
+    { label: `LEGACY lead model, locked: operator first email (${cfg.operators ? "on" : "off"}), as it would have gone to ${operator[0]?.company}`, mail: operator[0] ? renderOutreach(operator[0], 0) : null },
   ];
   const box = "rounded-xl bg-mist px-4 py-3 text-[14.5px]";
+  // Buyers by outbound campaign (22 Nov 2026): configured campaigns first, then any other campaign seen, then none.
+  const buyers = [...pipeline.talent_request, ...pipeline.project];
+  const seen = [...new Set(buyers.map((r) => r.attribution?.campaign).filter((c): c is string => Boolean(c)))];
+  const campaignRows = [...CAMPAIGNS.map((c) => ({ id: c.id, label: c.label, link: campaignLink(c) })), ...seen.filter((id) => !CAMPAIGNS.some((c) => c.id === id)).map((id) => ({ id, label: "Not in lib/config.ts CAMPAIGNS", link: "" }))];
+  const funnel = (rows: typeof buyers) => FUNNEL.map((f) => [f.label, rows.filter((r) => f.stages.includes(r.stage)).length] as const);
 
   return (
     <Shell lang="en" t={t}>
@@ -101,7 +110,7 @@ export default async function Admin({ params, searchParams }: PageProps<"/[lang]
           </div>
           <p className="mt-4 text-[14.5px] text-mute">
             Payments: {paymentsOn() ? "on" : `off (prices approved: ${PRICING.approved ? "yes" : "no"}, Stripe: ${process.env.STRIPE_SECRET_KEY ? "yes" : "no"})`}. Outreach sending:{" "}
-            {cfg.sending ? "on" : cfg.paused ? "PAUSED in config.ts (Samuel, 16 Nov 2026: no more lead pitches)" : `off (OUTREACH_LIVE ${cfg.live ? "on" : "off"}, SMTP ${cfg.smtp ? "set" : "missing"}, postal address ${cfg.address ? "set" : "missing"})`}. Replies read: {cfg.imap ? "yes" : "no (no follow-ups)"}.
+            {cfg.sending ? "on" : cfg.paused ? "PAUSED in config.ts (Samuel, 16 Nov 2026: no more lead pitches)" : cfg.legacyTexts ? "LOCKED: the texts still pitch paid leads (outreach-texts.ts LEGACY_LEAD_MODEL)" : `off (OUTREACH_LIVE ${cfg.live ? "on" : "off"}, SMTP ${cfg.smtp ? "set" : "missing"}, postal address ${cfg.address ? "set" : "missing"})`}. Replies read: {cfg.imap ? "yes" : "no (no follow-ups)"}. Legacy lead-model texts: {cfg.legacyTexts ? "locked, never sent" : "unlocked"}.
             Lead in hand: {cfg.leadOffers ? "on" : "off (waits for Samuel's OK, then OUTREACH_LEAD_OFFERS=on)"}. Operators:{" "}
             {cfg.operators ? "on" : "no email until Samuel approves their text (then OUTREACH_OPERATORS=on)"}. Countries: {cfg.countries.join(", ")}.
           </p>
@@ -203,10 +212,48 @@ export default async function Admin({ params, searchParams }: PageProps<"/[lang]
         </Card>
 
         <Card>
+          <div id="campaigns" className="scroll-mt-24" />
+          <h2 className="text-[20px] font-bold text-navy">Outbound campaigns</h2>
+          <p className="mt-2 text-[14.5px] text-mute">
+            Where to prospect first, not a limit on where we work: every trade, the US and Japan stay open on the site. Each link opens the request form with the trade and place chosen and records the campaign on the lead. Use
+            utm_source to say where you posted it (email, linkedin, phone, referral). Buyers you add by hand count here when you pick their campaign. New market or trade: add a row to CAMPAIGNS in lib/config.ts.
+          </p>
+          <div className="mt-4 overflow-x-auto">
+            <table className="w-full min-w-[720px] text-left text-[14px]">
+              <thead className="text-[12px] uppercase tracking-[0.1em] text-mute">
+                <tr>
+                  <th className="py-2 pr-3">Campaign</th>
+                  {FUNNEL.map((f) => (
+                    <th key={f.label} className="px-2 py-2 text-right">
+                      {f.label}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-line">
+                {[...campaignRows, { id: "", label: "No campaign (direct, search, before 22 Nov)", link: "" }].map((c) => (
+                  <tr key={c.id || "none"}>
+                    <td className="py-2 pr-3 align-top">
+                      <b className="font-mono text-navy">{c.id || "(none)"}</b> <span className="text-mute">{c.label}</span>
+                      {c.link && <input readOnly value={c.link} aria-label={`Link for ${c.id}`} className="field mt-1 block w-full py-1.5 font-mono text-[12px]" />}
+                    </td>
+                    {funnel(buyers.filter((r) => (r.attribution?.campaign ?? "") === c.id)).map(([label, n]) => (
+                      <td key={label} className="px-2 py-2 text-right align-top font-semibold text-navy">
+                        {n}
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </Card>
+
+        <Card>
           <div id="pipeline" className="scroll-mt-24" />
           <h2 className="text-[20px] font-bold text-navy">Sales and sourcing pipeline</h2>
           <p className="mt-2 text-[14.5px] text-mute">
-            Every request, project and application from the site, plus buyers you found yourself and Indeed candidates, both added below. Buyers move New Lead, Contacted, Qualified, Proposal, Provider Matching, Agreement, In Progress, Completed, Repeat Customer; Agreement and later need the signed agreement ticked (and, for a project, the partner&apos;s license and insurance). Applicants move Application Received, Qualification Pending, Verification In Progress, Verified, Available for Matching; Verified and Available need the checks ticked. Nobody is introduced and nothing is charged from here.
+            Every request, project and application from the site, plus buyers you found yourself and Indeed candidates, both added below. Employers move New Lead, Contacted, Qualified Vacancy, Terms Discussion, Signed Agreement, Authorized Candidate Introduction, Interview, Hire, Invoice: Signed Agreement and later need the signed agreement ticked, an introduction needs each candidate&apos;s own yes, and Hire and Invoice need the hire confirmed in writing. Projects move New Lead, Contacted, Qualified, Proposal, Provider Matching, Agreement, In Progress, Completed, Repeat Customer; Agreement and later need the signed agreement and the partner&apos;s license and insurance. Applicants move Application Received, Qualification Pending, Verification In Progress, Verified, Available for Matching; Verified and Available need the checks ticked. Nobody is introduced and nothing is charged from here.
           </p>
           {msg && <p className={`mt-4 ${box}`}>{msg}</p>}
 
@@ -270,6 +317,14 @@ export default async function Admin({ params, searchParams }: PageProps<"/[lang]
                           )}
                           {r.phone ? ` · ${r.phone}` : ""} · {r.place}, {r.country} · {r.trades.join(", ")} · {r.source} · {new Date(r.created_at).toISOString().slice(0, 10)}
                         </p>
+                        {(r.attribution?.campaign || r.attribution?.source || r.attribution?.referrer) && (
+                          <p className="mt-1 text-[13px] text-navy">
+                            Campaign <b className="font-mono">{r.attribution.campaign ?? "none"}</b>
+                            {r.attribution.source ? ` · via ${[r.attribution.source, r.attribution.medium].filter(Boolean).join(" / ")}` : ""}
+                            {r.attribution.referrer ? ` · came from ${r.attribution.referrer}` : ""}
+                          </p>
+                        )}
+                        <NextStep next={nextAction(r, events[r.id] ?? [], today)} />
                         <dl className="mt-2 grid gap-x-4 gap-y-1 sm:grid-cols-[220px_1fr]">
                           {Object.entries(r.data).map(([k, v]) => (
                             <div key={k} className="contents">
@@ -308,7 +363,9 @@ export default async function Admin({ params, searchParams }: PageProps<"/[lang]
                           <input type="hidden" name="key" value={key} />
                           <input type="hidden" name="id" value={r.id} />
                           <select name="stage" defaultValue={r.stage} className="field w-auto py-2 text-[14px]">
-                            {STAGES[kind].map((s) => (
+                            {STAGES[kind]
+                              .filter((s) => s === r.stage || !(RETIRED_STAGES[kind] ?? []).includes(s))
+                              .map((s) => (
                               <option key={s} value={s}>
                                 {labelFor(kind, s)}
                               </option>
@@ -340,6 +397,7 @@ export default async function Admin({ params, searchParams }: PageProps<"/[lang]
                           <input name="amount" inputMode="decimal" maxLength={14} placeholder="Amount (USD)" className="field w-[9rem] py-2 text-[14px]" />
                           <button className="rounded-md px-4 py-2 text-[14px] font-semibold text-navy ring-1 ring-navy/30">Log activity</button>
                         </form>
+                        {kind === "talent_request" && r.stage !== "lost" && <EmployerEmails r={r} adminKey={key} />}
                         {kind === "technician" && !r.consent_at && r.source === "indeed-resume" && (
                           <form action={adminSaidYesAction} className="mt-2 flex flex-wrap items-center gap-2 rounded-lg bg-orange/10 p-2">
                             <input type="hidden" name="key" value={key} />
@@ -384,6 +442,14 @@ export default async function Admin({ params, searchParams }: PageProps<"/[lang]
               {SOURCING_TRADES.map((k) => (
                 <option key={k} value={k}>
                   {k}
+                </option>
+              ))}
+            </select>
+            <select name="campaign" defaultValue="" className="field sm:col-span-2" aria-label="Campaign">
+              <option value="">No campaign</option>
+              {CAMPAIGNS.map((c) => (
+                <option key={c.id} value={c.id}>
+                  Campaign: {c.label}
                 </option>
               ))}
             </select>
@@ -524,7 +590,7 @@ export default async function Admin({ params, searchParams }: PageProps<"/[lang]
           <p className="mt-2 text-[14.5px] text-mute">{Object.entries(prospects).map(([k, v]) => `${k}: ${v}`).join(" · ") || "Empty: the daily run fills it."}</p>
           {preview && (
             <div className="mt-5">
-              <p className="text-[13px] font-bold uppercase tracking-[0.14em] text-orange">First email, as it would go to {contractor?.company}</p>
+              <p className="text-[13px] font-bold uppercase tracking-[0.14em] text-orange">LEGACY lead model, locked: first email, as it would have gone to {contractor?.company}</p>
               <pre className="mt-2 whitespace-pre-wrap rounded-xl bg-sky p-4 text-[14px] leading-relaxed">{`Subject: ${preview.subject}\n\n${preview.text}`}</pre>
             </div>
           )}
@@ -602,5 +668,114 @@ export default async function Admin({ params, searchParams }: PageProps<"/[lang]
         </Card>
       </section>
     </Shell>
+  );
+}
+
+/** The campaign table's columns: buyer stages grouped into the steps that matter (employers and projects). */
+const FUNNEL = [
+  { label: "New / contacted", stages: ["received", "contacted", "review"] },
+  { label: "Qualified / terms", stages: ["qualifying", "proposal", "matching"] },
+  { label: "Signed", stages: ["agreement", "introduced", "interview", "in_progress", "engaged"] },
+  { label: "Hired / done", stages: ["hired", "invoiced", "completed", "repeat"] },
+  { label: "Lost", stages: ["lost", "closed"] },
+];
+
+/** The next action on an employer lead, and what needs attention (lib/pipeline.ts nextAction). */
+function NextStep({ next }: { next: { text: string; warn: string } | null }) {
+  if (!next) return null;
+  return (
+    <div className="mt-2 rounded-lg bg-white px-3 py-2 ring-1 ring-navy/15">
+      <p className="text-[13.5px] text-navy">
+        <b>Next:</b> {next.text}
+      </p>
+      {next.warn && <p className="mt-1 text-[13px] font-semibold text-orange-deep">{next.warn}</p>}
+    </div>
+  );
+}
+
+type EmployerRow = Awaited<ReturnType<typeof listInquiries>>["talent_request"][number];
+
+/**
+ * Vacancy check and the two employer emails (lib/employer-outreach.ts). Nothing is sent from here: the person sends
+ * from their own mailbox, then logs it with who approved it. Until Samuel approves the words they are drafts only.
+ */
+function EmployerEmails({ r, adminKey }: { r: EmployerRow; adminKey: string }) {
+  const approved = employerTemplatesApproved();
+  const url = vacancyUrl(r.checks);
+  const vacancyForm = (
+    <form action={adminVacancyAction} className="mt-2 flex flex-wrap items-end gap-2">
+      <input type="hidden" name="key" value={adminKey} />
+      <input type="hidden" name="id" value={r.id} />
+      <input name="role" required maxLength={80} defaultValue={r.data.Role ?? ""} placeholder="Role title as posted" className="field w-[16rem] py-2 text-[14px]" />
+      <input name="url" required type="url" maxLength={300} placeholder="Link to the vacancy (careers page or job post)" className="field min-w-[16rem] flex-1 py-2 text-[14px]" />
+      <input name="owner" maxLength={60} placeholder="Who checked" className="field w-[8rem] py-2 text-[14px]" />
+      <button className="rounded-md px-4 py-2 text-[14px] font-semibold text-navy ring-1 ring-navy/30">Vacancy verified</button>
+    </form>
+  );
+  return (
+    <div className="mt-3 rounded-lg border border-line bg-white p-3 text-[13.5px]">
+      <p className="font-bold text-navy">Employer emails (sent by hand only)</p>
+      {url ? (
+        <>
+          <p className="mt-1 text-mute">
+            Vacancy verified {r.checks.vacancy?.slice(0, 10)}:{" "}
+            <a href={url} target="_blank" rel="noopener noreferrer" className="underline">
+              {url}
+            </a>
+          </p>
+          <details className="mt-1">
+            <summary className="cursor-pointer text-mute">Change the vacancy</summary>
+            {vacancyForm}
+          </details>
+        </>
+      ) : (
+        <>
+          <p className="mt-1 text-mute">Before any email: check the role is really open, on the employer&apos;s careers page or a job post, and paste its link.</p>
+          {vacancyForm}
+        </>
+      )}
+      {url &&
+        (Object.keys(EMPLOYER_TEMPLATES) as (keyof typeof EMPLOYER_TEMPLATES)[]).map((id) => {
+          const mail = renderEmployerEmail(id, r);
+          return (
+            <details key={id} className="mt-3 rounded-md bg-mist p-3">
+              <summary className="cursor-pointer font-semibold text-navy">
+                {EMPLOYER_TEMPLATES[id].label}
+                {!approved && <span className="ml-2 rounded bg-orange/10 px-2 py-0.5 text-[12px] font-bold text-orange-deep">DRAFT: waits for Samuel&apos;s approval</span>}
+              </summary>
+              {"missing" in mail ? (
+                <p className="mt-2 font-semibold text-orange-deep">{mail.missing}</p>
+              ) : (
+                <>
+                  <pre className="mt-2 whitespace-pre-wrap rounded bg-white p-3 text-[13.5px] leading-relaxed">{[`To: ${r.email}`, `Subject: ${mail.subject}`, "", mail.text].join("\n")}</pre>
+                  {approved ? (
+                    <div className="mt-2 flex flex-wrap items-end gap-2">
+                      <a
+                        href={`mailto:${encodeURIComponent(r.email)}?subject=${encodeURIComponent(mail.subject)}&body=${encodeURIComponent(mail.text.split("\n").join("\r\n"))}`}
+                        className="rounded-md bg-navy px-4 py-2 font-semibold text-white"
+                      >
+                        Open in my mail app
+                      </a>
+                      <form action={adminTemplateSentAction} className="flex flex-wrap items-end gap-2">
+                        <input type="hidden" name="key" value={adminKey} />
+                        <input type="hidden" name="id" value={r.id} />
+                        <input type="hidden" name="template" value={id} />
+                        <input name="approver" required maxLength={60} placeholder="Approved by" className="field w-[9rem] py-2 text-[14px]" />
+                        <input name="owner" maxLength={60} placeholder="Sent by" className="field w-[8rem] py-2 text-[14px]" />
+                        <label className="flex items-center gap-2 pb-2">
+                          <input type="checkbox" name="sent" value="yes" required className="accent-navy" />I read it and sent it myself
+                        </label>
+                        <button className="rounded-md px-4 py-2 font-semibold text-navy ring-1 ring-navy/30">Log as sent</button>
+                      </form>
+                    </div>
+                  ) : (
+                    <p className="mt-2 text-mute">Not for sending yet. Once Samuel approves these words, EMPLOYER_TEMPLATES=approved in Vercel opens the mail button and the log.</p>
+                  )}
+                </>
+              )}
+            </details>
+          );
+        })}
+    </div>
   );
 }
