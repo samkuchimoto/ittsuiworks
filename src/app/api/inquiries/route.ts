@@ -142,6 +142,15 @@ export async function POST(request: Request) {
       },
     };
   }
+  // Record bounded, non-personal campaign labels for employer/project demand generation.
+  // Applicant profiles do not inherit marketing attribution.
+  if (kind === "talent_request" || kind === "project") {
+    for (const key of ["utm_source", "utm_medium", "utm_campaign"] as const) {
+      const value = r.text(key, 64).replace(/[^a-zA-Z0-9._-]/g, "");
+      if (value) input.data[key] = value;
+    }
+    if (input.data.utm_source) input.source = `campaign:${input.data.utm_source}`;
+  }
   if (invalid.length) return fail("invalid", 400, [...new Set(invalid)]);
   try {
     await createInquiry(input, files);
