@@ -10,7 +10,7 @@ import { Label } from "./Typo";
 export function Shell({ lang, t, current, children }: { lang: Locale; t: Dict; current?: string; children: ReactNode }) {
   return (
     <>
-      <TopBar lang={lang} t={t.header} onHome={false} />
+      <TopBar lang={lang} t={t.header} onHome={false} showDeal={current !== "/deal"} />
       <NavBar lang={lang} items={t.nav} onHome={false} current={current} />
       <main id="top">{children}</main>
       <Footer lang={lang} t={t.footer} nav={t.nav} onHome={false} />

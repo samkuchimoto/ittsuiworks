@@ -42,7 +42,7 @@ export default async function Deal({ params }: PageProps<"/[lang]/deal">) {
   ];
 
   return (
-    <Shell lang="en" t={t}>
+    <Shell lang="en" t={t} current="/deal">
       {/* 1. The promise */}
       <section className="relative overflow-hidden bg-sky">
         <div aria-hidden="true" className="blueprint absolute inset-0 [mask-image:radial-gradient(ellipse_at_top_left,black_35%,transparent_80%)]" />

@@ -1,15 +1,46 @@
 import type { Dict } from "@/content";
+import { DEAL } from "@/content/deal";
 import { pathFor, type Locale } from "@/lib/site";
-import { PlusIcon } from "./Icons";
+import { ArrowIcon, PlusIcon } from "./Icons";
 import { Wordmark } from "./Logo";
 
 /** "#faq" lands on the home page section; "/jobs" is a page in the current language. */
 export const linkFor = (lang: Locale, href: string, onHome: boolean) => (href.startsWith("#") ? (onHome ? href : `${pathFor(lang)}${href}`) : pathFor(lang, href));
 
-/** The white corporate bar: one line saying what we do, the logo, two links and the navy "Request Technicians" button. */
-export function TopBar({ lang, t, onHome = true }: { lang: Locale; t: Dict["header"]; onHome?: boolean }) {
+/**
+ * The deal strip (Samuel, 22 Nov 2026: "a button to see the deal on top"): one line and the button to /deal, above the
+ * header on every English page. English only (the deal is for US clients), and not on /deal itself.
+ */
+function DealBar() {
   return (
-    <header className="bg-white">
+    <div className="bg-navy-deep text-white">
+      <div className="mx-auto flex max-w-[1280px] items-center justify-between gap-3 px-4 py-2 sm:px-8">
+        <p className="min-w-0 text-[13px] text-white/80 sm:text-[13.5px]">
+          <span className="font-bold uppercase tracking-[0.16em] text-amber">{DEAL.bar.label}</span>
+          <span aria-hidden="true" className="mx-2 text-white/30">
+            ·
+          </span>
+          <span className="hidden sm:inline">{DEAL.bar.text}</span>
+          <span className="sm:hidden">{DEAL.bar.short}</span>
+        </p>
+        <a
+          href="/deal"
+          className="group inline-flex shrink-0 items-center gap-2 rounded-md bg-orange px-3.5 py-1.5 text-[13.5px] font-semibold text-white shadow-[0_8px_20px_-10px_rgb(200_70_27/0.9)] transition hover:bg-orange-deep"
+        >
+          {DEAL.bar.cta}
+          <ArrowIcon className="size-3.5 transition group-hover:translate-x-0.5" />
+        </a>
+      </div>
+    </div>
+  );
+}
+
+/** The white corporate bar: one line saying what we do, the logo, two links and the navy "Request Technicians" button. */
+export function TopBar({ lang, t, onHome = true, showDeal = true }: { lang: Locale; t: Dict["header"]; onHome?: boolean; showDeal?: boolean }) {
+  return (
+    <>
+      {lang === "en" && showDeal && <DealBar />}
+      <header className="bg-white">
       <div className="mx-auto flex max-w-[1280px] items-center justify-between gap-3 px-4 py-3 sm:px-8 lg:py-4">
         <div className="min-w-0">
           <p className="mb-1.5 hidden text-[12.5px] text-mute lg:block">{t.positioning}</p>
@@ -37,7 +68,8 @@ export function TopBar({ lang, t, onHome = true }: { lang: Locale; t: Dict["head
           </a>
         </div>
       </div>
-    </header>
+      </header>
+    </>
   );
 }
 
