@@ -425,6 +425,23 @@ function BackButton({ t, onClick }: { t: Dict["form"]; onClick: () => void }) {
 const REQUEST_STEP_ONE = ["trades", "role", "country", "place", "start"];
 const PROJECT_STEP_ONE = ["facility", "size", "trades", "country", "place", "start"];
 
+/** Attribution for direct outreach links. This is descriptive only and never authorizes a lead or a charge. */
+function CampaignFields() {
+  const [campaign, setCampaign] = useState({ utm_source: "", utm_medium: "", utm_campaign: "" });
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const read = (key: string) => (params.get(key) ?? "").slice(0, 64).replace(/[^a-zA-Z0-9._-]/g, "");
+    setCampaign({ utm_source: read("utm_source"), utm_medium: read("utm_medium"), utm_campaign: read("utm_campaign") });
+  }, []);
+  return (
+    <>
+      <input type="hidden" name="utm_source" value={campaign.utm_source} />
+      <input type="hidden" name="utm_medium" value={campaign.utm_medium} />
+      <input type="hidden" name="utm_campaign" value={campaign.utm_campaign} />
+    </>
+  );
+}
+
 /** Employers: a recruiting and staffing request (/request). */
 export function RequestForm({ lang, t, countries }: { lang: Locale; t: NetText & { request: Dict["request"]; selector: Dict["selector"] }; countries: [string, string][] }) {
   const { status, submit, bad, invalid } = useSubmit("/api/inquiries");
@@ -440,6 +457,7 @@ export function RequestForm({ lang, t, countries }: { lang: Locale; t: NetText &
     <form ref={formRef} onSubmit={submit} noValidate className="grid scroll-mt-24 gap-4 sm:grid-cols-2">
       <input type="hidden" name="lang" value={lang} />
       <input type="hidden" name="kind" value="talent_request" />
+      <CampaignFields />
       <Honeypot />
       {/* The price and the next steps, where the buyer decides (18 Nov 2026). */}
       <div className="rounded-md border border-line bg-sky/40 p-4 text-[14.5px] text-ink sm:col-span-2">
@@ -523,6 +541,7 @@ export function CommercialProjectForm({ lang, t, countries }: { lang: Locale; t:
     <form ref={formRef} onSubmit={submit} noValidate encType="multipart/form-data" className="grid scroll-mt-24 gap-4 sm:grid-cols-2">
       <input type="hidden" name="lang" value={lang} />
       <input type="hidden" name="kind" value="project" />
+      <CampaignFields />
       <Honeypot />
       {/* Step 1: what, how big, which trades, where and when. Hidden fields still post with the form. */}
       <div key={preset ? "preset" : "plain"} className={step === 1 ? "contents" : "hidden"}>
