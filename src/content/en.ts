@@ -34,6 +34,8 @@ export const en = {
     home: "Ittsui Works home",
   },
   nav: [
+    // English only (Samuel, 22 Nov 2026): the deal is for US clients, so the Japanese menu has no such tab.
+    { label: "The Deal", href: "/deal" },
     { label: "Request technicians", href: "/request" },
     { label: "Submit a project", href: "/post-project" },
     { label: "Join as a technician", href: "/join" },

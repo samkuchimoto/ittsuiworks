@@ -21,8 +21,14 @@ export function DealOrder({ countries }: { countries: [string, string][] }) {
     panel.current?.scrollIntoView({ behavior: smooth ? "smooth" : "auto", block: "start" });
     panel.current?.querySelector<HTMLElement>("h2")?.focus({ preventScroll: true });
   };
+  // "#order" in the address opens the form: on arrival (/deal#order) and from the hero's Place an Order link.
   useEffect(() => {
-    if (window.location.hash === "#order") setOpen(true);
+    const fromHash = () => {
+      if (window.location.hash === "#order") setOpen(true);
+    };
+    fromHash();
+    window.addEventListener("hashchange", fromHash);
+    return () => window.removeEventListener("hashchange", fromHash);
   }, []);
   useEffect(() => {
     if (open) reveal();

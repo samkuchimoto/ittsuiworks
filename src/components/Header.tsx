@@ -58,7 +58,7 @@ export function TopBar({ lang, t, onHome = true, showDeal = true }: { lang: Loca
   );
 }
 
-/** The navy menu: five equal tabs, sticky while scrolling. Scrolls sideways on narrow phones. */
+/** The navy menu: equal tabs (six in English with The Deal, five in Japanese), sticky while scrolling. Scrolls sideways on narrow phones. */
 export function NavBar({ lang, items, onHome = true, current }: { lang: Locale; items: Dict["nav"]; onHome?: boolean; current?: string }) {
   return (
     <nav aria-label="Main" className="sticky top-0 z-40 bg-navy text-white shadow-[0_10px_30px_-18px_rgb(10_27_51/0.9)]">

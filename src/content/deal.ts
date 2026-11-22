@@ -15,13 +15,14 @@ const CARDS: DealCard[] = [
       badge: "US hires",
       big: "25%",
       sub: "of first-year base pay, only if you hire",
+      // Card copy tightened about 25% (Samuel, 22 Nov 2026). The full terms a client confirms are TERMS below, unchanged.
       rows: [
-        { label: "Who it is for", text: "US employers hiring commercial HVAC, commercial electrical, data center, or marine technicians." },
-        { label: "The value", text: "Identity, work history, and required licenses checked with technician consent before anyone hits your calendar." },
-        { label: "The deal", text: "**$0** upfront and **$0** to submit a role. **25% of First-Year Base Pay**, payable only if you hire a candidate we introduce.", deal: true },
+        { label: "Who it is for", text: "US employers hiring commercial HVAC, electrical, data center or marine technicians." },
+        { label: "The value", text: "Identity, work history and licenses checked, with consent, before anyone reaches your calendar." },
+        { label: "The deal", text: "**$0** upfront or to submit a role. **25% of first-year base pay**, only if you hire a candidate we introduce.", deal: true },
         {
           label: "Guarantee & term",
-          text: "**90-day free replacement** if the hire leaves within 90 days of starting, strictly valid when the invoice is paid within **15 days** (excludes layoffs or changed roles).",
+          text: "**90-day free replacement** if the hire leaves, valid when the invoice is paid within **15 days** (not for layoffs or changed roles).",
         },
       ],
     },
@@ -32,16 +33,16 @@ const CARDS: DealCard[] = [
       big: "8% to 12%",
       sub: "paid by the licensed trade partner, on paid milestones",
       rows: [
-        { label: "Who it is for", text: "Facility owners and GCs submitting commercial scopes, and licensed, insured trade partner companies taking commercial subcontracts." },
+        { label: "Who it is for", text: "Facility owners and GCs with commercial scopes, and licensed, insured trade partners taking subcontracts." },
         {
           label: "The value",
-          text: "Every project passes 3 hard gates before matching:",
+          text: "Every project passes 3 hard gates:",
           list: ["Power secured or not needed", "Budget approved", "Start date set"],
-          after: "Every trade partner's state license and insurance are verified before matching; they contract directly with the client.",
+          after: "Partners' state license and insurance are verified first; they contract directly with the client.",
         },
         {
           label: "The deal",
-          text: "**$0** for facility owners and GCs to submit an RFP. Licensed trade partners pay **8% to 12%** brokerage/referral commission (agreed in writing first) strictly on secured, paid project milestones (subject to state licensing rules).",
+          text: "**$0** for owners and GCs to submit an RFP. Licensed partners pay an **8% to 12%** commission, agreed in writing, only on paid milestones (subject to state licensing rules).",
           deal: true,
         },
       ],
@@ -62,7 +63,7 @@ export const DEAL = {
       { title: "Confirm in writing", text: "Receive your pre-filled 1-page written fee agreement (plus Kuchimoto LLC W-9) to confirm before our first introduction." },
       {
         title: "Pay on results",
-        text: "Pay strictly upon result via **safe US Bank Transfer (ACH or Wire)** through a hosted Mercury virtual-account payment link to **Kuchimoto LLC** (Net 15 from hire start date; Net 7 from cleared project milestone). Nothing is charged on this site.",
+        text: "Pay via **safe Mercury US ACH/Wire link** to **Kuchimoto LLC**: Net 15 from hire start, or Net 7 from cleared project milestone.",
       },
     ],
   },
@@ -73,8 +74,8 @@ export const DEAL = {
   formIntro: "Takes about two minutes. We check every order by hand before anything is released.",
   binding:
     "I confirm I am authorized to bind the company listed above to the exact Ittsui Works deal terms shown on this page, and understand no candidate identities or project contacts are released until written confirmation.",
-  trust:
-    "Operated by Kuchimoto LLC (Sheridan, WY). Bank transfers settle via Mercury (Column N.A., Member FDIC) using unique virtual account links issued strictly per verified order.",
+  // "Operated by Kuchimoto LLC" dropped here (Samuel, 22 Nov 2026): the site footer already says it.
+  trust: "Bank transfers settle via Mercury (Column N.A., Member FDIC) using unique virtual account links issued strictly per verified order.",
   safety: "Ittsui Works never sends bank account numbers by email. Pay only through the Mercury link that quotes your order reference.",
   /** Public record (Wyoming Secretary of State), so a client can check who they pay before paying. */
   verify: { text: "Check us on the Wyoming Secretary of State registry: Kuchimoto LLC, filing ID 2026-002122100.", link: "https://wyobiz.wyo.gov/Business/FilingSearch.aspx" },

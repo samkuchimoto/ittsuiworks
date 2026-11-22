@@ -4,7 +4,7 @@ import { DealOrder } from "@/components/DealOrder";
 import { ShieldIcon } from "@/components/Icons";
 import { Rich } from "@/components/Rich";
 import { Shell } from "@/components/Shell";
-import { Label } from "@/components/Typo";
+import { Cta, Label } from "@/components/Typo";
 import { getDictionary } from "@/content";
 import { DEAL } from "@/content/deal";
 import { COUNTRY_CODES, countryName } from "@/lib/countries";
@@ -25,7 +25,8 @@ export async function generateMetadata({ params }: PageProps<"/[lang]/deal">): P
 
 /**
  * The deal (Samuel, 22 Nov 2026): the page the team opens on calls and sends to US clients, readable in a minute.
- * The promise, the two deals, how payment works, then one button that opens the official order form. English only
+ * The promise (with the order button above the fold), the two deals, how payment works, and the button that opens the
+ * official order form. English only
  * (US clients): /ja/deal sends visitors here, and the proxy never sends /deal to Japanese.
  */
 export default async function Deal({ params }: PageProps<"/[lang]/deal">) {
@@ -51,26 +52,40 @@ export default async function Deal({ params }: PageProps<"/[lang]/deal">) {
             <Label>{DEAL.eyebrow}</Label>
             <h1 className="font-display mt-4 text-[34px] leading-[1.08] text-navy sm:text-[44px] lg:text-[54px]">{DEAL.title}</h1>
             <p className="mt-5 max-w-[46rem] text-[17.5px] leading-relaxed text-ink/80">{DEAL.intro}</p>
+            {/* The order button above the fold (Samuel, 22 Nov 2026). "#order" opens the same form as the button below. */}
+            <Cta href="#order" className="mt-7">
+              {DEAL.cta}
+            </Cta>
           </div>
         </div>
       </section>
 
-      {/* 2. The two deals, side by side on a wide screen */}
+      {/*
+        2. The two deals, side by side on a wide screen. Both cards share the same five rows (header, then four detail
+        rows) through CSS subgrid, so each row, the light-blue "The deal" box included, starts and ends at the same
+        height in both cards, and both cards end level. Card B has no fourth row; its last track stays empty.
+      */}
       <section aria-label="The two deals" className="bg-white">
-        <div className="mx-auto grid max-w-[1280px] gap-5 px-4 py-10 sm:px-8 lg:grid-cols-2 lg:gap-6 lg:py-14">
+        <div className="mx-auto grid max-w-[1280px] gap-5 px-4 py-10 sm:px-8 lg:grid-cols-2 lg:gap-x-6 lg:gap-y-0 lg:py-14">
           {DEAL.cards.map((card, i) => (
-            <article key={card.key} aria-labelledby={`deal-${card.key}`} className="flex flex-col rounded-2xl bg-white p-6 shadow-[0_40px_80px_-50px_rgb(15_39_71/0.5)] ring-1 ring-navy/10 sm:p-8">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <h2 id={`deal-${card.key}`} className="text-[12.5px] font-bold uppercase tracking-[0.14em] text-orange">
-                  <span className="text-mute">{i === 0 ? "A" : "B"} · </span>
-                  {card.tag}
-                </h2>
-                <span className="rounded-full bg-sky px-3 py-1 text-[12.5px] font-semibold text-navy ring-1 ring-navy/10">{card.badge}</span>
+            <article
+              key={card.key}
+              aria-labelledby={`deal-${card.key}`}
+              className="flex flex-col rounded-2xl bg-white p-6 shadow-[0_40px_80px_-50px_rgb(15_39_71/0.5)] ring-1 ring-navy/10 sm:p-8 lg:row-span-5 lg:grid lg:grid-rows-subgrid lg:gap-y-0"
+            >
+              <div>
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <h2 id={`deal-${card.key}`} className="text-[12.5px] font-bold uppercase tracking-[0.14em] text-orange">
+                    <span className="text-mute">{i === 0 ? "A" : "B"} · </span>
+                    {card.tag}
+                  </h2>
+                  <span className="rounded-full bg-sky px-3 py-1 text-[12.5px] font-semibold text-navy ring-1 ring-navy/10">{card.badge}</span>
+                </div>
+                <p className="font-display mt-5 text-[46px] leading-none text-navy lg:text-[54px]">{card.big}</p>
+                <p className="mt-2 text-[15.5px] font-semibold text-navy">{card.sub}</p>
+                <span aria-hidden="true" className="mt-5 block h-0.5 w-10 bg-orange" />
               </div>
-              <p className="font-display mt-5 text-[46px] leading-none text-navy lg:text-[54px]">{card.big}</p>
-              <p className="mt-2 text-[15.5px] font-semibold text-navy">{card.sub}</p>
-              <span aria-hidden="true" className="mt-5 block h-0.5 w-10 bg-orange" />
-              <dl className="mt-4">
+              <dl className="mt-4 lg:row-span-4 lg:grid lg:grid-rows-subgrid lg:gap-y-0">
                 {card.rows.map((row) => (
                   <div
                     key={row.label}
@@ -99,7 +114,7 @@ export default async function Deal({ params }: PageProps<"/[lang]/deal">) {
         </div>
       </section>
 
-      {/* 3. How you pay, and the one button */}
+      {/* 3. How you pay, and the order button */}
       <section aria-labelledby="pay-title" className="relative overflow-hidden bg-navy text-white">
         <div aria-hidden="true" className="blueprint-dark absolute inset-0" />
         <div className="relative mx-auto max-w-[1280px] px-4 py-12 sm:px-8 lg:py-16">
