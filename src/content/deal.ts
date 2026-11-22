@@ -67,13 +67,8 @@ export const DEAL = {
     ],
   },
   cta: "Place an Order",
-  /** The strip above the header on every English page (not on /deal itself). */
-  bar: {
-    label: "The Deal",
-    text: "$0 upfront. Paid strictly on results. Every fee agreed in writing first.",
-    short: "Paid on results.",
-    cta: "See the Deal",
-  },
+  /** The outlined header button on every English page (not on /deal itself). */
+  see: "See the Deal",
   formTitle: "Official Business Order & Verification",
   formIntro: "Takes about two minutes. We check every order by hand before anything is released.",
   binding:

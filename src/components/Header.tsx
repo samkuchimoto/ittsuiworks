@@ -1,55 +1,31 @@
 import type { Dict } from "@/content";
 import { DEAL } from "@/content/deal";
 import { pathFor, type Locale } from "@/lib/site";
-import { ArrowIcon, PlusIcon } from "./Icons";
+import { PlusIcon } from "./Icons";
 import { Wordmark } from "./Logo";
 
 /** "#faq" lands on the home page section; "/jobs" is a page in the current language. */
 export const linkFor = (lang: Locale, href: string, onHome: boolean) => (href.startsWith("#") ? (onHome ? href : `${pathFor(lang)}${href}`) : pathFor(lang, href));
 
 /**
- * The deal strip (Samuel, 22 Nov 2026: "a button to see the deal on top"): one line and the button to /deal, above the
- * header on every English page. English only (the deal is for US clients), and not on /deal itself.
+ * The white corporate bar: one line saying what we do, the logo, two links and the navy "Request Technicians" button.
+ * English pages also get an outlined "See the Deal" button beside it (Samuel, 22 Nov 2026, after the Seal & Staff
+ * header): not on /deal itself, not in Japanese (the deal is for US clients). With it, the two text links show from
+ * 1280px only, and on phones both buttons take their own row under the logo.
  */
-function DealBar() {
-  return (
-    <div className="bg-navy-deep text-white">
-      <div className="mx-auto flex max-w-[1280px] items-center justify-between gap-3 px-4 py-2 sm:px-8">
-        <p className="min-w-0 text-[13px] text-white/80 sm:text-[13.5px]">
-          <span className="font-bold uppercase tracking-[0.16em] text-amber">{DEAL.bar.label}</span>
-          <span aria-hidden="true" className="mx-2 text-white/30">
-            ·
-          </span>
-          <span className="hidden sm:inline">{DEAL.bar.text}</span>
-          <span className="sm:hidden">{DEAL.bar.short}</span>
-        </p>
-        <a
-          href="/deal"
-          className="group inline-flex shrink-0 items-center gap-2 rounded-md bg-orange px-3.5 py-1.5 text-[13.5px] font-semibold text-white shadow-[0_8px_20px_-10px_rgb(200_70_27/0.9)] transition hover:bg-orange-deep"
-        >
-          {DEAL.bar.cta}
-          <ArrowIcon className="size-3.5 transition group-hover:translate-x-0.5" />
-        </a>
-      </div>
-    </div>
-  );
-}
-
-/** The white corporate bar: one line saying what we do, the logo, two links and the navy "Request Technicians" button. */
 export function TopBar({ lang, t, onHome = true, showDeal = true }: { lang: Locale; t: Dict["header"]; onHome?: boolean; showDeal?: boolean }) {
+  const deal = lang === "en" && showDeal;
   return (
-    <>
-      {lang === "en" && showDeal && <DealBar />}
-      <header className="bg-white">
-      <div className="mx-auto flex max-w-[1280px] items-center justify-between gap-3 px-4 py-3 sm:px-8 lg:py-4">
+    <header className="bg-white">
+      <div className={`mx-auto flex max-w-[1280px] items-center justify-between gap-3 px-4 py-3 sm:px-8 lg:py-4 ${deal ? "flex-wrap sm:flex-nowrap" : ""}`}>
         <div className="min-w-0">
           <p className="mb-1.5 hidden text-[12.5px] text-mute lg:block">{t.positioning}</p>
           <a href={pathFor(lang)} aria-label={t.home} className="inline-flex">
             <Wordmark />
           </a>
         </div>
-        <div className="flex shrink-0 items-center gap-3 sm:gap-6">
-          <nav className="hidden items-center gap-2 text-[14.5px] font-semibold text-navy md:flex">
+        <div className={`flex shrink-0 items-center gap-3 sm:gap-6 ${deal ? "w-full sm:w-auto" : ""}`}>
+          <nav className={`hidden items-center gap-2 text-[14.5px] font-semibold text-navy ${deal ? "xl:flex" : "md:flex"}`}>
             {t.links.map((link, i) => (
               <span key={link.href} className="flex items-center gap-2">
                 {i > 0 && <span className="text-line" aria-hidden="true">/</span>}
@@ -59,17 +35,26 @@ export function TopBar({ lang, t, onHome = true, showDeal = true }: { lang: Loca
               </span>
             ))}
           </nav>
-          <a
-            href={pathFor(lang, t.ctaHref)}
-            className="inline-flex items-center gap-2 whitespace-nowrap rounded-md bg-navy px-3 py-3 text-[13.5px] font-semibold text-white shadow-[0_8px_24px_-10px_rgb(15_39_71/0.8)] transition hover:bg-navy-deep sm:gap-2.5 sm:px-6 sm:text-[14.5px]"
-          >
-            <PlusIcon className="size-[18px]" />
-            {t.cta}
-          </a>
+          <div className={`flex items-center gap-2 sm:gap-2.5 ${deal ? "w-full sm:w-auto" : ""}`}>
+            {deal && (
+              <a
+                href="/deal"
+                className="inline-flex shrink-0 items-center justify-center whitespace-nowrap rounded-md border border-navy bg-white px-4 py-[11px] text-[13.5px] font-semibold text-navy transition hover:bg-sky sm:px-6 sm:text-[14.5px]"
+              >
+                {DEAL.see}
+              </a>
+            )}
+            <a
+              href={pathFor(lang, t.ctaHref)}
+              className={`inline-flex items-center gap-2 whitespace-nowrap rounded-md bg-navy px-3 py-3 text-[13.5px] font-semibold text-white shadow-[0_8px_24px_-10px_rgb(15_39_71/0.8)] transition hover:bg-navy-deep sm:gap-2.5 sm:px-6 sm:text-[14.5px] ${deal ? "flex-1 justify-center sm:flex-none" : ""}`}
+            >
+              <PlusIcon className="size-[18px]" />
+              {t.cta}
+            </a>
+          </div>
         </div>
       </div>
-      </header>
-    </>
+    </header>
   );
 }
 
