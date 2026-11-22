@@ -16,6 +16,9 @@ export const CheckIcon = ({ className = "size-4" }: P) => (
 export const PlusIcon = ({ className = "size-4" }: P) => (
   <svg viewBox="0 0 24 24" className={className} aria-hidden="true" {...base}><path d="M12 5v14M5 12h14" /></svg>
 );
-export const PlayIcon = ({ className = "size-4" }: P) => (
+export const ShieldIcon = ({ className = "size-4" }: P) => (
+  <svg viewBox="0 0 24 24" className={className} aria-hidden="true" {...base}><path d="M12 3 4.5 6v5.5c0 4.6 3.1 8.3 7.5 9.5 4.4-1.2 7.5-4.9 7.5-9.5V6L12 3Z" /><path d="m8.8 12.2 2.3 2.3 4.3-4.6" /></svg>
+);
+export const PlayIcon =({ className = "size-4" }: P) => (
   <svg viewBox="0 0 24 24" className={className} aria-hidden="true" fill="currentColor"><path d="M8 5.5v13l11-6.5-11-6.5Z" /></svg>
 );

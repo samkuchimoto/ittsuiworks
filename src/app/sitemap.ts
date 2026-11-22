@@ -25,6 +25,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     ...both("/privacy", 0.2),
     // English only: technician placement is for US hires (17 Nov 2026).
     { url: `${SITE_URL}/technicians`, priority: 0.85 },
+    // English only: the deal and order page for US clients (22 Nov 2026).
+    { url: `${SITE_URL}/deal`, priority: 0.9 },
   ];
   const jobs = await allLiveJobs().catch(() => []);
   return [

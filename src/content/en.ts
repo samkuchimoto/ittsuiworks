@@ -787,7 +787,7 @@ export const en = {
   },
   privacy: {
     title: "Privacy policy",
-    updated: "Last updated: November 16, 2026",
+    updated: "Last updated: November 22, 2026",
     sections: [
       {
         h: "Who we are",
@@ -795,7 +795,7 @@ export const en = {
       },
       {
         h: "What we collect",
-        p: "Only what you type into our forms. Technician applications: name, email, phone or WhatsApp, city and state, trade, licenses and certifications, years of experience, target rate, availability, any file you upload, and the consent you gave. Trade partners: company, contact name, email, phone, license number, insurance answer, crew size, trades, service areas and project size. Employers and project owners: company, name, role, email, phone and the role or project. Job board: the jobs companies post, applications to them and job alerts. The site sets one cookie, which remembers the language you chose.",
+        p: "Only what you type into our forms. Technician applications: name, email, phone or WhatsApp, city and state, trade, licenses and certifications, years of experience, target rate, availability, any file you upload, and the consent you gave. Trade partners: company, contact name, email, phone, license number, insurance answer, crew size, trades, service areas and project size. Employers and project owners: company, name, role, email, phone and the role or project. Job board: the jobs companies post, applications to them and job alerts. Official orders on the deal page: legal company name, authorized signer and job title, business email, phone, billing address, website, an optional EIN or PO number and, to prevent fraud, the IP address and browser the order came from. The site sets one cookie, which remembers the language you chose.",
       },
       {
         h: "Who sees it",
@@ -803,7 +803,7 @@ export const en = {
       },
       {
         h: "Where it goes",
-        p: "The site is hosted by Vercel, the database by Neon (USA), and emails are sent by Resend. We do not sell your data or use it for advertising.",
+        p: "The site is hosted by Vercel, the database by Neon (USA), and emails are sent by Resend. Vercel BotID checks that an order comes from a person, and invoices are issued through Mercury, our business banking provider. We do not sell your data or use it for advertising.",
       },
       {
         h: "Emails to businesses",

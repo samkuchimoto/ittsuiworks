@@ -17,6 +17,14 @@ ittsuiworks.com: a job board and project leads for commercial HVAC, data center 
 
 `DATABASE_URL` (Neon, tables created on first use), `RESEND_API_KEY`, `CONTACT_TO_EMAIL`, `CONTACT_FROM_EMAIL`, `CRON_SECRET`, `ADMIN_KEY` (admin page at `/admin/<ADMIN_KEY>`), and when payments go on: `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` (endpoint `/api/stripe-webhook`).
 
+## The deal page (`/deal`)
+
+English only, for US clients: the two deals, how payment works, and one **Place an Order** button that opens the official order form (`/deal#order` opens it directly). Orders post to `/api/deal-order`, land in the `deal_orders` table and in the admin pipeline (source `deal`), and email the client (reference, terms, next step) and the team. Free webmail, disposable addresses, an email domain that differs from the website, and a billing address outside the US set `needs_manual_review`. Copy and terms: `src/content/deal.ts` (each order keeps the terms version it confirmed).
+
+- Bots: Vercel BotID (`botid` package, Basic mode: free, no keys or env vars). `src/instrumentation-client.ts` lists the protected route; `/api/deal-order` refuses any request BotID marks as a bot (a script, curl, the form copied elsewhere). On a computer it always answers "human"; `BOTID_DEV_BYPASS=BAD-BOT` tries the refusal.
+- `ORDER_ALERT_EMAIL`: the team address for new orders (falls back to `CONTACT_TO_EMAIL`); also copied on Mercury invoices.
+- `MERCURY_API_TOKEN` (read-write; Mercury accepts it only from allowlisted IPs, so the server needs a fixed outbound IP), `MERCURY_DESTINATION_ACCOUNT_ID` (from `GET /accounts`), optional `MERCURY_API_URL` (sandbox) and `MERCURY_PAY_URL_TEMPLATE` (`...{slug}`, once confirmed from a real invoice). On a result, the admin page's **Create Mercury invoice** button computes the fee (25% Net 15 from the start date, or 8% to 12% Net 7 from the cleared milestone) and Mercury emails the client its hosted pay page with virtual account numbers (`useRealAccountNumber: false`). No bank account or routing number is ever in the code, the site or our emails.
+
 ## Daily run
 
 `vercel.json` calls `/api/cron/daily` at 22:00 UTC: jobs end, alerts go out, leads are offered, missed payments are recovered, outreach runs, and one summary email reaches the inbox.

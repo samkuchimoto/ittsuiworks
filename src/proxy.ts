@@ -11,13 +11,16 @@ export function proxy(request: NextRequest) {
   if (pathname === "/ja" || pathname.startsWith("/ja/")) return NextResponse.next();
 
   const url = request.nextUrl.clone();
-  if (prefersJapanese(request)) {
+  if (!ENGLISH_ONLY.has(pathname) && prefersJapanese(request)) {
     url.pathname = pathname === "/" ? "/ja" : `/ja${pathname}`;
     return NextResponse.redirect(url);
   }
   url.pathname = pathname === "/" ? "/en" : `/en${pathname}`;
   return NextResponse.rewrite(url);
 }
+
+/** Pages that exist in English only (US clients): never sent to /ja, whatever the browser prefers. */
+const ENGLISH_ONLY = new Set(["/deal"]);
 
 function prefersJapanese(request: NextRequest) {
   const saved = request.cookies.get(LOCALE_COOKIE)?.value;

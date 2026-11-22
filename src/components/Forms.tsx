@@ -8,7 +8,7 @@ import { pathFor, type Locale } from "@/lib/site";
 import { ArrowIcon, CheckIcon } from "./Icons";
 
 type Status = "idle" | "sending" | "done" | "failed" | "invalid" | "busy" | "duplicate";
-type Result = { ok?: boolean; error?: string; fields?: string[]; live?: boolean; jobId?: string };
+type Result = { ok?: boolean; error?: string; fields?: string[]; live?: boolean; jobId?: string; reference?: string };
 
 /** Posts a form to an API route and keeps its state: sending, done, which fields were refused. */
 export function useSubmit(endpoint: string) {

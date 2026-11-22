@@ -10,6 +10,7 @@
     "check:live": "node scripts/check-live.mjs"
   },
   "dependencies": {
+    "botid": "^1.5.13",
     "imapflow": "^2.11.0",
     "next": "16.4.6",
     "nodemailer": "^10.5.0",

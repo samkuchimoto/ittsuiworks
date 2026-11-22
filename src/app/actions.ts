@@ -252,3 +252,31 @@ export async function adminEventDoneAction(form: FormData) {
   await completeEvent(read(form, "event", 12));
   redirect(`/admin/${read(form, "key", 100)}?msg=${encodeURIComponent("Follow-up done.")}#pipeline`);
 }
+
+// ------------------------------------------------------------------ deal orders (admin): getting paid through Mercury
+
+/**
+ * The one click on the day a hire starts or a milestone clears (22 Nov 2026): the fee from the agreed terms, then a
+ * Mercury invoice that Mercury emails to the client with its hosted pay page. Mercury refuses a second invoice with
+ * the same number, so a double click never bills twice.
+ */
+export async function adminDealInvoiceAction(form: FormData) {
+  if (!adminOk(form)) redirect("/");
+  const key = read(form, "key", 100);
+  const { invoiceDealOrder } = await import("@/lib/deal");
+  const money = (name: string) => Number(read(form, name, 20).replace(/[,\s$%]/g, ""));
+  let msg: string;
+  try {
+    const { invoice, amount, payUrl } = await invoiceDealOrder({
+      reference: read(form, "reference", 20),
+      base: money("base"),
+      rate: form.get("rate") ? money("rate") : undefined,
+      eventDate: read(form, "date", 10),
+      send: read(form, "send", 3) === "yes",
+    });
+    msg = `Mercury invoice ${invoice.invoiceNumber} created: $${amount.toFixed(2)}, due ${invoice.dueDate}${read(form, "send", 3) === "yes" ? ", emailed to the client by Mercury" : ", NOT emailed (send it from Mercury)"}.${payUrl ? ` Pay page: ${payUrl}` : ""}`;
+  } catch (error) {
+    msg = `Not invoiced. ${error instanceof Error ? error.message : "Unknown error."}`;
+  }
+  redirect(`/admin/${key}?deal=${encodeURIComponent(msg.slice(0, 300))}#deal-orders`);
+}

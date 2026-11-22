@@ -231,6 +231,37 @@ CREATE TABLE IF NOT EXISTS partners (
   confirmed_at timestamptz
 );
 CREATE INDEX IF NOT EXISTS partners_status ON partners (status, confirmed_at DESC);
+-- Deal orders from /deal (22 Nov 2026), additive only: the client's official billing details, the exact terms they
+-- confirmed, where the order came from (IP, browser) and why it needs a person's review. Mercury invoices are listed
+-- here once sent (lib/mercury.ts). Never holds a bank account or routing number.
+CREATE TABLE IF NOT EXISTS deal_orders (
+  reference text PRIMARY KEY,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  kind text NOT NULL,
+  scope jsonb NOT NULL,
+  company text NOT NULL,
+  signer_name text NOT NULL,
+  signer_title text NOT NULL,
+  email text NOT NULL,
+  phone text NOT NULL,
+  address jsonb NOT NULL,
+  website text NOT NULL,
+  ein text NOT NULL DEFAULT '',
+  po_number text NOT NULL DEFAULT '',
+  terms_version text NOT NULL,
+  terms_text text NOT NULL,
+  binding_text text NOT NULL,
+  ip text NOT NULL,
+  user_agent text NOT NULL DEFAULT '',
+  needs_manual_review boolean NOT NULL,
+  review_reasons text[] NOT NULL DEFAULT '{}',
+  status text NOT NULL DEFAULT 'received',
+  inquiry_id text REFERENCES inquiries(id) ON DELETE SET NULL,
+  client_emailed boolean NOT NULL DEFAULT false,
+  mercury_customer_id text,
+  mercury_invoices jsonb NOT NULL DEFAULT '[]'
+);
+CREATE INDEX IF NOT EXISTS deal_orders_created ON deal_orders (created_at DESC);
 `;
 
 function ensureSchema(): Promise<void> {

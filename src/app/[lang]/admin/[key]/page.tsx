@@ -5,6 +5,7 @@ import {
   adminAddCandidateAction,
   adminAddLeadAction,
   adminCloseJobAction,
+  adminDealInvoiceAction,
   adminEventAction,
   adminEventDoneAction,
   adminListTechnicianAction,
@@ -24,6 +25,9 @@ import { listJobs, marketStats } from "@/lib/market";
 import { isOperator, outreachConfig, outreachStats, renderLeadOffer, renderOutreach, type Prospect } from "@/lib/outreach";
 import { CHECKS, EVENT_KINDS, KIND_LABEL, STAGES, eventsFor, labelFor, listInquiries, openFollowups } from "@/lib/pipeline";
 import { privatePage } from "@/lib/seo";
+import { KIND_LABEL as DEAL_KIND_LABEL } from "@/content/deal";
+import { COMMISSION, formatAddress, listDealOrders } from "@/lib/deal";
+import { mercuryConfigured, payPageUrl } from "@/lib/mercury";
 
 export const metadata: Metadata = privatePage;
 
@@ -34,8 +38,10 @@ export default async function Admin({ params, searchParams }: PageProps<"/[lang]
   const secret = process.env.ADMIN_KEY;
   if (lang !== "en" || !secret || secret.length < 24 || key !== secret || !hasDatabase()) notFound();
   const t = getDictionary("en");
-  const { imported, msg: rawMsg } = await searchParams;
+  const { imported, msg: rawMsg, deal: rawDeal } = await searchParams;
   const msg = typeof rawMsg === "string" ? rawMsg.slice(0, 200) : "";
+  const dealMsg = typeof rawDeal === "string" ? rawDeal.slice(0, 300) : "";
+  const dealOrders = await listDealOrders().catch(() => []);
   const [pipeline, followups, stats, prospects, { jobs }, sample, operator, firstContractor, employers] = await Promise.all([
     listInquiries(),
     openFollowups(),
@@ -99,6 +105,101 @@ export default async function Admin({ params, searchParams }: PageProps<"/[lang]
             Lead in hand: {cfg.leadOffers ? "on" : "off (waits for Samuel's OK, then OUTREACH_LEAD_OFFERS=on)"}. Operators:{" "}
             {cfg.operators ? "on" : "no email until Samuel approves their text (then OUTREACH_OPERATORS=on)"}. Countries: {cfg.countries.join(", ")}.
           </p>
+        </Card>
+
+        <Card>
+          <div id="deal-orders" className="scroll-mt-24" />
+          <h2 className="text-[20px] font-bold text-navy">Deal orders (/deal)</h2>
+          <p className="mt-2 text-[14.5px] text-mute">
+            Official orders from the deal page; each is also in the pipeline below. Check the company (state registry, website, signer) before sending the 1-page agreement and the W-9. On a
+            result, create the Mercury invoice here: Mercury emails the client its pay page with virtual account numbers. Mercury:{" "}
+            {mercuryConfigured() ? "connected" : "not connected (MERCURY_API_TOKEN, MERCURY_DESTINATION_ACCOUNT_ID)"}. Bot check: Vercel BotID, automatic on Vercel.
+          </p>
+          {dealMsg && <p className={`mt-4 ${box}`}>{dealMsg}</p>}
+          {dealOrders.length === 0 ? (
+            <p className="mt-4 text-[14px] text-mute">No order yet.</p>
+          ) : (
+            <ul className="mt-6 space-y-4">
+              {dealOrders.map((o) => {
+                const hire = o.kind === "hire";
+                return (
+                  <li key={o.reference} className="rounded-xl p-4 text-[14px] ring-1 ring-line">
+                    <p className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                      <b className="font-mono text-[15px] text-navy">{o.reference}</b>
+                      <span className="text-mute">{new Date(o.created_at).toISOString().slice(0, 16).replace("T", " ")} UTC</span>
+                      <span className="font-semibold text-navy">{DEAL_KIND_LABEL[o.kind]}</span>
+                      <span className="rounded bg-sky px-2 py-0.5 text-[12.5px] font-semibold text-navy">{o.status}</span>
+                      {o.needs_manual_review ? (
+                        <span className="rounded bg-orange/10 px-2 py-0.5 text-[12.5px] font-bold text-orange-deep">REVIEW: {o.review_reasons.join("; ")}</span>
+                      ) : (
+                        <span className="text-[12.5px] text-mute">no flag</span>
+                      )}
+                    </p>
+                    <p className="mt-2">
+                      <b>{o.company}</b> · {o.signer_name}, {o.signer_title} · <a href={`mailto:${o.email}`} className="underline">{o.email}</a> · {o.phone} ·{" "}
+                      <a href={o.website} target="_blank" rel="noopener noreferrer" className="underline">
+                        {o.website}
+                      </a>
+                    </p>
+                    <p className="mt-1 text-mute">
+                      {formatAddress(o.address)} · EIN {o.ein || "not given"} · PO {o.po_number || "not given"} · {o.scope.role}, {o.scope.place}, start {o.scope.start} · IP {o.ip} · terms{" "}
+                      {o.terms_version} · client email {o.client_emailed ? "sent" : "NOT sent"}
+                    </p>
+                    {o.mercury_invoices.length > 0 && (
+                      <ul className="mt-2 space-y-1">
+                        {o.mercury_invoices.map((inv) => {
+                          const url = payPageUrl(inv.slug);
+                          return (
+                            <li key={inv.id}>
+                              Invoice <b>{inv.number}</b>: ${Number(inv.amount).toFixed(2)}, {inv.status} at creation, due {inv.dueDate} ({inv.basis})
+                              {url && (
+                                <>
+                                  {" "}
+                                  ·{" "}
+                                  <a href={url} target="_blank" rel="noopener noreferrer" className="underline">
+                                    pay page
+                                  </a>
+                                </>
+                              )}
+                            </li>
+                          );
+                        })}
+                      </ul>
+                    )}
+                    {o.kind === "project_owner" ? (
+                      <p className="mt-2 text-mute">Facility owner or GC: never invoiced. Invoice the trade partner&apos;s order.</p>
+                    ) : (
+                      <form action={adminDealInvoiceAction} className="mt-3 flex flex-wrap items-end gap-3 border-t border-line pt-3">
+                        <input type="hidden" name="key" value={key} />
+                        <input type="hidden" name="reference" value={o.reference} />
+                        <label className="font-semibold text-navy">
+                          {hire ? "First-year base pay (USD)" : "Paid milestone (USD)"}
+                          <input name="base" required inputMode="decimal" placeholder={hire ? "85000" : "120000"} className="field mt-1 block w-40 py-2" />
+                        </label>
+                        {!hire && (
+                          <label className="font-semibold text-navy">
+                            Rate (%)
+                            <input name="rate" type="number" required min={COMMISSION.min} max={COMMISSION.max} step="0.5" defaultValue={10} className="field mt-1 block w-24 py-2" />
+                          </label>
+                        )}
+                        <label className="font-semibold text-navy">
+                          {hire ? "Hire start date" : "Milestone cleared on"}
+                          <input name="date" type="date" required defaultValue={today} className="field mt-1 block py-2" />
+                        </label>
+                        <label className="flex items-center gap-2 pb-2.5">
+                          <input type="checkbox" name="send" value="yes" defaultChecked className="size-4 accent-navy" />
+                          Mercury emails it now
+                        </label>
+                        <button className="rounded-md bg-navy px-4 py-2.5 font-semibold text-white hover:bg-navy-deep">
+                          Create Mercury invoice ({hire ? "25%, Net 15" : "rate, Net 7"})
+                        </button>
+                      </form>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+          )}
         </Card>
 
         <Card>
