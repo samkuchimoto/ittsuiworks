@@ -80,6 +80,12 @@ export type SourcingTrade = (typeof SOURCING_TRADES)[number];
 /** Typical project size a trade partner takes, and the size of a submitted commercial project (USD). */
 export const PROJECT_SIZES = ["10k50k", "50k250k", "250k"] as const;
 export const ENGAGEMENTS = ["direct_hire", "contract", "contract_to_hire"] as const;
+/**
+ * What an employer can request today (Samuel, 22 Nov 2026): direct hire only, the approved 25% contingency deal.
+ * Contract and contract-to-hire stay off until their commercial terms are approved; ENGAGEMENTS keeps their names
+ * only so earlier requests still read correctly.
+ */
+export const OFFERED_ENGAGEMENTS = ["direct_hire"] as const;
 export const HEADCOUNTS = ["1", "2-5", "6-10", "11-25", "26+"] as const;
 /** How long the technicians are needed (Samuel, 16 Nov 2026: "Project duration"). */
 export const DURATIONS = ["under1m", "1to3m", "3to6m", "6to12m", "ongoing"] as const;

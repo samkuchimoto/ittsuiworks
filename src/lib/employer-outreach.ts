@@ -1,5 +1,7 @@
 /**
- * Two short emails to an employer with a verified open vacancy (22 Nov 2026). The site never sends them: the admin
+ * Two short emails to an employer whose vacancy we have seen posted (22 Nov 2026). A posting shows the role exists, not
+ * that its budget is approved, so the emails ask whether it is still open and never assume a budget; funding is
+ * confirmed with the hiring manager before the lead can be Qualified Vacancy (pipeline.ts EMPLOYER_GATES). The site never sends them: the admin
  * shows each one filled in for the lead, and a person reads it, sends it from their own mailbox and logs it as sent,
  * naming who approved it. Until Samuel approves these words (EMPLOYER_TEMPLATES=approved in Vercel) they are drafts:
  * shown for review only, with no mail button and nothing can be logged as sent.
@@ -67,7 +69,7 @@ export function hubOf(place: string): Hub {
 
 type Lead = { company: string; name: string; email: string; place: string; trades: string[]; data: Record<string, string>; checks: Record<string, string>; attribution: Attribution };
 
-/** The vacancy link recorded when it was verified ("2026-11-22: https://..."), or null. */
+/** The posting link recorded for the vacancy ("2026-11-22: https://..."), or null. */
 export function vacancyUrl(checks: Record<string, string>): string | null {
   const m = checks.vacancy?.match(/https?:\/\/\S+/);
   return m ? m[0] : null;
@@ -80,10 +82,10 @@ export function vacancyUrl(checks: Record<string, string>): string | null {
  */
 export function renderEmployerEmail(id: EmployerTemplateId, lead: Lead): { subject: string; text: string } | { missing: string } {
   const url = vacancyUrl(lead.checks);
-  if (!url) return { missing: "Verify the vacancy first (its link on the employer's careers page or job post)." };
+  if (!url) return { missing: "Record where the vacancy is posted first (the employer's careers page or job post)." };
   if (!lead.email) return { missing: "No email on this lead: add one (call first if they gave only a phone)." };
   const role = lead.data.Role?.trim();
-  if (!role) return { missing: "No role title: add it when you verify the vacancy." };
+  if (!role) return { missing: "No role title: add it when you record the posting." };
   const trade = lead.trades[0] ?? "";
   const sourcing = (SOURCING_TRADES as readonly string[]).includes(trade) ? (trade as SourcingTrade) : undefined;
   const hub = hubOf(lead.place);

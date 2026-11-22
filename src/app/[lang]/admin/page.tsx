@@ -6,6 +6,8 @@ import {
   adminAddLeadAction,
   adminCloseJobAction,
   adminDealInvoiceAction,
+  adminLoginAction,
+  adminLogoutAction,
   adminEventAction,
   adminEventDoneAction,
   adminListTechnicianAction,
@@ -17,7 +19,7 @@ import {
   adminVacancyAction,
   importProspectsAction,
 } from "@/app/actions";
-import { isAdminKey } from "@/lib/admin-key";
+import { isAdmin } from "@/lib/admin-session";
 import { campaignLink } from "@/lib/attribution";
 import { EMPLOYER_TEMPLATES, employerTemplatesApproved, renderEmployerEmail, vacancyUrl } from "@/lib/employer-outreach";
 import { PARTNERS, confirmLink, headline, listPartners } from "@/lib/partners";
@@ -36,13 +38,17 @@ import { mercuryConfigured, payPageUrl } from "@/lib/mercury";
 
 export const metadata: Metadata = privatePage;
 
-/** Samuel's view, at /admin/<ADMIN_KEY> (English only): numbers, switches, the outreach queue and a preview of its emails. */
-export default async function Admin({ params, searchParams }: PageProps<"/[lang]/admin/[key]">) {
-  const { lang, key } = await params;
+/**
+ * Samuel's view, at /admin (English only): numbers, switches, the pipeline, the outreach queue. Since 22 Nov 2026 it
+ * asks for ADMIN_KEY once and keeps a signed 12-hour session (lib/admin-session.ts); the key is never in a URL.
+ */
+export default async function Admin({ params, searchParams }: PageProps<"/[lang]/admin">) {
+  const { lang } = await params;
   await connection();
-  if (lang !== "en" || !isAdminKey(key) || !hasDatabase()) notFound();
+  if (lang !== "en" || !hasDatabase()) notFound();
   const t = getDictionary("en");
-  const { imported, msg: rawMsg, deal: rawDeal } = await searchParams;
+  const { imported, msg: rawMsg, deal: rawDeal, login } = await searchParams;
+  if (!(await isAdmin())) return <SignIn failed={login === "failed"} />;
   const msg = typeof rawMsg === "string" ? rawMsg.slice(0, 200) : "";
   const dealMsg = typeof rawDeal === "string" ? rawDeal.slice(0, 300) : "";
   const dealOrders = await listDealOrders().catch(() => []);
@@ -96,7 +102,12 @@ export default async function Admin({ params, searchParams }: PageProps<"/[lang]
   return (
     <Shell lang="en" t={t}>
       <section className="mx-auto max-w-[1280px] space-y-8 px-4 py-12 sm:px-8">
-        <h1 className="font-display text-[40px] text-navy">Ittsui Works admin</h1>
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <h1 className="font-display text-[40px] text-navy">Ittsui Works admin</h1>
+          <form action={adminLogoutAction}>
+            <button className="rounded-md px-4 py-2 text-[14px] font-semibold text-navy ring-1 ring-navy/30">Sign out</button>
+          </form>
+        </div>
         {imported && <p className={box}>Imported: {imported} new companies.</p>}
         <Card>
           <h2 className="text-[20px] font-bold text-navy">Numbers</h2>
@@ -179,7 +190,6 @@ export default async function Admin({ params, searchParams }: PageProps<"/[lang]
                       <p className="mt-2 text-mute">Facility owner or GC: never invoiced. Invoice the trade partner&apos;s order.</p>
                     ) : (
                       <form action={adminDealInvoiceAction} className="mt-3 flex flex-wrap items-end gap-3 border-t border-line pt-3">
-                        <input type="hidden" name="key" value={key} />
                         <input type="hidden" name="reference" value={o.reference} />
                         <label className="font-semibold text-navy">
                           {hire ? "First-year base pay (USD)" : "Paid milestone (USD)"}
@@ -270,7 +280,6 @@ export default async function Admin({ params, searchParams }: PageProps<"/[lang]
                       {e.owner ? ` · ${e.owner}` : ""}
                     </span>
                     <form action={adminEventDoneAction}>
-                      <input type="hidden" name="key" value={key} />
                       <input type="hidden" name="event" value={e.id} />
                       <button className="rounded-md px-3 py-1.5 text-[13px] font-semibold text-navy ring-1 ring-navy/30">Mark done</button>
                     </form>
@@ -339,7 +348,7 @@ export default async function Admin({ params, searchParams }: PageProps<"/[lang]
                           </p>
                         )}
                         {(r.files ?? []).map((file) => (
-                          <a key={file.id} href={`/api/admin/${key}/file/${file.id}`} className="mr-4 mt-2 inline-block font-semibold text-navy underline">
+                          <a key={file.id} href={`/api/admin/file/${file.id}`} className="mr-4 mt-2 inline-block font-semibold text-navy underline">
                             Download {file.name} ({Math.round(file.size / 1024)} KB)
                           </a>
                         ))}
@@ -360,7 +369,6 @@ export default async function Admin({ params, searchParams }: PageProps<"/[lang]
                         )}
 
                         <form action={adminStageAction} className="mt-3 flex flex-wrap items-end gap-3 border-t border-line pt-3">
-                          <input type="hidden" name="key" value={key} />
                           <input type="hidden" name="id" value={r.id} />
                           <select name="stage" defaultValue={r.stage} className="field w-auto py-2 text-[14px]">
                             {STAGES[kind]
@@ -377,12 +385,14 @@ export default async function Admin({ params, searchParams }: PageProps<"/[lang]
                               {c.label}
                             </label>
                           ))}
+                          {kind === "talent_request" && (
+                            <input name="candidates" maxLength={300} placeholder="Candidates introduced (IDs, e.g. AB12CD34, IW-1A2B3C)" className="field min-w-[16rem] py-2 text-[14px]" />
+                          )}
                           <input name="note" maxLength={500} placeholder="Note (lookup URL, who confirmed...)" className="field min-w-[14rem] flex-1 py-2 text-[14px]" />
                           <button className="rounded-md bg-navy px-4 py-2 text-[14px] font-semibold text-white">Save stage</button>
                         </form>
 
                         <form action={adminEventAction} className="mt-2 flex flex-wrap items-end gap-2">
-                          <input type="hidden" name="key" value={key} />
                           <input type="hidden" name="id" value={r.id} />
                           <select name="kind" defaultValue="call" className="field w-auto py-2 text-[14px]" aria-label="Activity">
                             {EVENT_KINDS.map((k) => (
@@ -397,10 +407,9 @@ export default async function Admin({ params, searchParams }: PageProps<"/[lang]
                           <input name="amount" inputMode="decimal" maxLength={14} placeholder="Amount (USD)" className="field w-[9rem] py-2 text-[14px]" />
                           <button className="rounded-md px-4 py-2 text-[14px] font-semibold text-navy ring-1 ring-navy/30">Log activity</button>
                         </form>
-                        {kind === "talent_request" && r.stage !== "lost" && <EmployerEmails r={r} adminKey={key} />}
+                        {kind === "talent_request" && r.stage !== "lost" && <EmployerEmails r={r} />}
                         {kind === "technician" && !r.consent_at && r.source === "indeed-resume" && (
                           <form action={adminSaidYesAction} className="mt-2 flex flex-wrap items-center gap-2 rounded-lg bg-orange/10 p-2">
-                            <input type="hidden" name="key" value={key} />
                             <input type="hidden" name="id" value={r.id} />
                             <span className="text-[13px] text-navy">Replied YES in Indeed on</span>
                             <input name="day" type="date" defaultValue={today} className="field w-auto py-1.5 text-[13px]" aria-label="Day they said yes" />
@@ -415,7 +424,6 @@ export default async function Admin({ params, searchParams }: PageProps<"/[lang]
                             </p>
                           ) : (
                             <form action={adminListTechnicianAction} className="mt-2">
-                              <input type="hidden" name="key" value={key} />
                               <input type="hidden" name="id" value={r.id} />
                               <button className="rounded-md px-4 py-2 text-[13px] font-semibold text-navy ring-1 ring-navy/30">List anonymously in the technician directory</button>
                             </form>
@@ -429,7 +437,6 @@ export default async function Admin({ params, searchParams }: PageProps<"/[lang]
           })}
 
           <form action={adminAddLeadAction} className="mt-10 grid gap-3 rounded-xl bg-mist p-5 sm:grid-cols-2">
-            <input type="hidden" name="key" value={key} />
             <p className="text-[15px] font-bold text-navy sm:col-span-2">Add a buyer you found yourself: a call, an email reply, an event (lands at New Lead; nobody is emailed)</p>
             <select name="kind" required defaultValue="talent_request" className="field" aria-label="Kind">
               <option value="talent_request">Technician request (US hires only)</option>
@@ -474,7 +481,6 @@ export default async function Admin({ params, searchParams }: PageProps<"/[lang]
           </form>
 
           <form action={adminAddCandidateAction} className="mt-10 grid gap-3 rounded-xl bg-sky p-5 sm:grid-cols-2">
-            <input type="hidden" name="key" value={key} />
             <p className="text-[15px] font-bold text-navy sm:col-span-2">Add an Indeed candidate who said yes to question 3 (lands at Qualification Pending; no email is sent to them)</p>
             <input name="name" required placeholder="Full name" className="field" />
             <input name="email" type="email" required placeholder="Email they gave" className="field" />
@@ -561,7 +567,6 @@ export default async function Admin({ params, searchParams }: PageProps<"/[lang]
                       <td className="py-2">
                         {p.status !== "invited" && (
                           <form action={adminPartnerStatusAction}>
-                            <input type="hidden" name="key" value={key} />
                             <input type="hidden" name="id" value={p.id} />
                             <input type="hidden" name="status" value={p.status === "active" ? "hidden" : "active"} />
                             <button className="rounded-md px-3 py-1.5 text-[13px] font-semibold text-navy ring-1 ring-navy/30">{p.status === "active" ? "Hide" : "List again"}</button>
@@ -575,7 +580,6 @@ export default async function Admin({ params, searchParams }: PageProps<"/[lang]
             </div>
           )}
           <form action={adminLoadPartnersAction} className="mt-6 grid gap-3">
-            <input type="hidden" name="key" value={key} />
             <label htmlFor="partners-csv" className="text-[14px] font-semibold text-navy">
               Load invited profiles: paste partners-public-preview.csv (Partner ID, Headline, Trade, City, State, Certifications). Other columns are ignored, so no name or
               contact is stored.
@@ -616,7 +620,6 @@ export default async function Admin({ params, searchParams }: PageProps<"/[lang]
             ))}
           </ul>
           <form action={importProspectsAction} className="mt-6 space-y-3">
-            <input type="hidden" name="key" value={key} />
             <label className="block text-[14px] font-semibold text-navy" htmlFor="csv">
               Import companies (one per line: company, email, website, country, trade). Only business addresses the company publishes itself.
             </label>
@@ -658,7 +661,6 @@ export default async function Admin({ params, searchParams }: PageProps<"/[lang]
                   {job.company_name} · {job.city}, {job.country} · {job.applications} applications
                 </span>
                 <form action={adminCloseJobAction}>
-                  <input type="hidden" name="key" value={key} />
                   <input type="hidden" name="job" value={job.id} />
                   <button className="rounded-md px-3 py-1.5 text-[13.5px] font-semibold text-orange-deep ring-1 ring-orange/40">Remove</button>
                 </form>
@@ -699,17 +701,16 @@ type EmployerRow = Awaited<ReturnType<typeof listInquiries>>["talent_request"][n
  * Vacancy check and the two employer emails (lib/employer-outreach.ts). Nothing is sent from here: the person sends
  * from their own mailbox, then logs it with who approved it. Until Samuel approves the words they are drafts only.
  */
-function EmployerEmails({ r, adminKey }: { r: EmployerRow; adminKey: string }) {
+function EmployerEmails({ r }: { r: EmployerRow }) {
   const approved = employerTemplatesApproved();
   const url = vacancyUrl(r.checks);
   const vacancyForm = (
     <form action={adminVacancyAction} className="mt-2 flex flex-wrap items-end gap-2">
-      <input type="hidden" name="key" value={adminKey} />
       <input type="hidden" name="id" value={r.id} />
       <input name="role" required maxLength={80} defaultValue={r.data.Role ?? ""} placeholder="Role title as posted" className="field w-[16rem] py-2 text-[14px]" />
       <input name="url" required type="url" maxLength={300} placeholder="Link to the vacancy (careers page or job post)" className="field min-w-[16rem] flex-1 py-2 text-[14px]" />
       <input name="owner" maxLength={60} placeholder="Who checked" className="field w-[8rem] py-2 text-[14px]" />
-      <button className="rounded-md px-4 py-2 text-[14px] font-semibold text-navy ring-1 ring-navy/30">Vacancy verified</button>
+      <button className="rounded-md px-4 py-2 text-[14px] font-semibold text-navy ring-1 ring-navy/30">Record posting</button>
     </form>
   );
   return (
@@ -718,19 +719,22 @@ function EmployerEmails({ r, adminKey }: { r: EmployerRow; adminKey: string }) {
       {url ? (
         <>
           <p className="mt-1 text-mute">
-            Vacancy verified {r.checks.vacancy?.slice(0, 10)}:{" "}
+            Vacancy posting seen {r.checks.vacancy?.slice(0, 10)} (shows the role exists, not its budget):{" "}
             <a href={url} target="_blank" rel="noopener noreferrer" className="underline">
               {url}
             </a>
           </p>
           <details className="mt-1">
-            <summary className="cursor-pointer text-mute">Change the vacancy</summary>
+            <summary className="cursor-pointer text-mute">Change the posting</summary>
             {vacancyForm}
           </details>
         </>
       ) : (
         <>
-          <p className="mt-1 text-mute">Before any email: check the role is really open, on the employer&apos;s careers page or a job post, and paste its link.</p>
+          <p className="mt-1 text-mute">
+            Before any email: find the role on the employer&apos;s careers page or a job post and paste its link. A posting shows the role exists, not that it has an approved
+            budget: confirm that with the hiring manager before Qualified Vacancy.
+          </p>
           {vacancyForm}
         </>
       )}
@@ -757,7 +761,6 @@ function EmployerEmails({ r, adminKey }: { r: EmployerRow; adminKey: string }) {
                         Open in my mail app
                       </a>
                       <form action={adminTemplateSentAction} className="flex flex-wrap items-end gap-2">
-                        <input type="hidden" name="key" value={adminKey} />
                         <input type="hidden" name="id" value={r.id} />
                         <input type="hidden" name="template" value={id} />
                         <input name="approver" required maxLength={60} placeholder="Approved by" className="field w-[9rem] py-2 text-[14px]" />
@@ -777,5 +780,22 @@ function EmployerEmails({ r, adminKey }: { r: EmployerRow; adminKey: string }) {
           );
         })}
     </div>
+  );
+}
+
+/** The sign-in form: the key is typed here once, posted to a server action, and never put in a URL. */
+function SignIn({ failed }: { failed: boolean }) {
+  return (
+    <main className="mx-auto flex min-h-[70vh] max-w-[420px] flex-col justify-center px-4 py-16">
+      <h1 className="font-display text-[32px] text-navy">Ittsui Works admin</h1>
+      <form action={adminLoginAction} className="mt-6 space-y-3">
+        <label htmlFor="admin-password" className="block text-[14px] font-semibold text-navy">
+          Admin key
+        </label>
+        <input id="admin-password" name="password" type="password" required autoComplete="current-password" className="field" />
+        {failed && <p className="text-[14px] font-semibold text-orange-deep">Not signed in. Check the key, or wait 10 minutes after 5 tries.</p>}
+        <button className="rounded-md bg-navy px-5 py-3 text-[15px] font-semibold text-white">Sign in</button>
+      </form>
+    </main>
   );
 }

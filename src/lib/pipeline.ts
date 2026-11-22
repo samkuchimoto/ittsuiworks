@@ -104,10 +104,11 @@ export const CHECKS: Record<Kind, { key: string; label: string }[]> = {
     { key: "insurance", label: "Certificates of liability and workers' comp insurance seen, in date" },
   ],
   talent_request: [
+    { key: "funded", label: "The hiring manager confirmed the role is approved and funded (who and when in the note). A job post alone is not proof of a budget" },
     { key: "agreement", label: "Written placement agreement signed (fee, guarantee, payment terms)" },
     {
       key: "candidate_ok",
-      label: "Each candidate introduced is Verified in the pipeline and said yes to this employer by name before their identity was shared (candidate IDs in the note)",
+      label: "Each candidate introduced said yes to this employer by name before their identity was shared (name them in Candidates: each must be Verified, checked by the server)",
     },
     { key: "hire_confirmed", label: "Hire confirmed in writing by the employer: start date and first-year base pay (both in the note)" },
   ],
@@ -118,16 +119,19 @@ export const CHECKS: Record<Kind, { key: string; label: string }[]> = {
   ],
 };
 /**
- * Employers: the checks each stage needs (22 Nov 2026). Signed Agreement and every stage after it need the signed
- * agreement, as before; a candidate is introduced only with their yes; a hire is invoiced only once confirmed in
- * writing. The earlier stages keep the gate they had (the agreement only).
+ * Employers: the checks each stage needs (22 Nov 2026). A vacancy counts as qualified only once the hiring manager
+ * confirms it is approved and funded (a public job post does not prove a budget); Signed Agreement and every stage
+ * after it need the signed agreement, as before; a candidate is introduced only when Verified and with their yes; a
+ * hire is invoiced only once confirmed in writing. The earlier stages keep the gate they had (the agreement only).
  */
 const EMPLOYER_GATES: Record<string, string[]> = {
-  agreement: ["agreement"],
-  introduced: ["agreement", "candidate_ok"],
-  interview: ["agreement", "candidate_ok"],
-  hired: ["agreement", "candidate_ok", "hire_confirmed"],
-  invoiced: ["agreement", "candidate_ok", "hire_confirmed"],
+  qualifying: ["funded"],
+  proposal: ["funded"],
+  agreement: ["funded", "agreement"],
+  introduced: ["funded", "agreement", "candidate_ok"],
+  interview: ["funded", "agreement", "candidate_ok"],
+  hired: ["funded", "agreement", "candidate_ok", "hire_confirmed"],
+  invoiced: ["funded", "agreement", "candidate_ok", "hire_confirmed"],
   in_progress: ["agreement"],
   completed: ["agreement"],
   repeat: ["agreement"],
@@ -274,7 +278,7 @@ export async function listInquiries(): Promise<Record<Kind, Inquiry[]>> {
  * Moves an inquiry to a stage. Refuses a stage the kind does not have, and a stage whose checks are not all ticked.
  * Every check keeps the day and the note it was confirmed with. Returns an error message, or null when done.
  */
-export async function setStage(id: string, stage: string, ticked: string[], note: string): Promise<string | null> {
+export async function setStage(id: string, stage: string, ticked: string[], note: string, candidates = ""): Promise<string | null> {
   const [row] = await query<Inquiry>(`SELECT * FROM inquiries WHERE id = $1`, [id]);
   if (!row || !isKind(row.kind)) return "Not found.";
   if (!STAGES[row.kind].includes(stage)) return `A ${row.kind} has no stage "${stage}".`;
@@ -282,12 +286,49 @@ export async function setStage(id: string, stage: string, ticked: string[], note
   const needed = gateFor(row.kind, stage);
   const checks = { ...row.checks };
   const day = new Date().toISOString().slice(0, 10);
+  // Candidates introduced to an employer (22 Nov 2026): each one is checked here, never taken on trust.
+  let introduced: string[] = [];
+  if (row.kind === "talent_request" && (candidates.trim() || (ticked.includes("candidate_ok") && needed.some((c) => c.key === "candidate_ok") && !checks.candidate_ok))) {
+    const result = await verifiedCandidates(candidates);
+    if ("error" in result) return `Not saved: ${result.error}`;
+    introduced = result.ids;
+    const earlier = checks.candidate_ok ? `${checks.candidate_ok}; ` : "";
+    if (checks.candidate_ok || ticked.includes("candidate_ok")) checks.candidate_ok = `${earlier}${day}: ${introduced.join(", ")}${note ? ` (${note})` : ""}`;
+  }
   for (const c of needed) if (ticked.includes(c.key) && !checks[c.key]) checks[c.key] = `${day}${note ? `: ${note}` : ""}`;
   const missing = needed.filter((c) => !checks[c.key]);
   if (missing.length) return `Tick every check first: ${missing.map((c) => c.key).join(", ")}.`;
   await query(`UPDATE inquiries SET stage = $2, stage_at = now(), checks = $3 WHERE id = $1`, [id, stage, JSON.stringify(checks)]);
-  await addEvent(id, { kind: "stage", text: `${labelFor(row.kind, row.stage)} -> ${labelFor(row.kind, stage)}${note ? `: ${note}` : ""}` });
+  await addEvent(id, { kind: "stage", text: `${labelFor(row.kind, row.stage)} -> ${labelFor(row.kind, stage)}${introduced.length ? ` (candidates ${introduced.join(", ")})` : ""}${note ? `: ${note}` : ""}` });
   return null;
+}
+
+/**
+ * The candidates named for an introduction: pipeline IDs (as the admin shows them) or IW- profile IDs. Each must be a
+ * technician at Verified or Available for Matching, with consent on record and every technician check ticked
+ * (license, identity, work history). Applying through Indeed or the site never makes anyone verified.
+ */
+async function verifiedCandidates(raw: string): Promise<{ ids: string[] } | { error: string }> {
+  const tokens = [...new Set(raw.split(/[s,;]+/).map((t) => t.trim()).filter(Boolean))].slice(0, 20);
+  if (!tokens.length) return { error: "name each candidate introduced (pipeline ID or IW- profile ID)." };
+  const ids: string[] = [];
+  for (const token of tokens) {
+    let inquiryId = token.toLowerCase();
+    if (/^iw-[0-9a-f]{6}$/i.test(token)) {
+      const [profile] = await query<{ inquiry_id: string | null }>(`SELECT inquiry_id FROM partners WHERE id = $1`, [token.toUpperCase()]);
+      if (!profile?.inquiry_id) return { error: `${token.toUpperCase()} has no confirmed technician record.` };
+      inquiryId = profile.inquiry_id;
+    }
+    if (!/^[a-z0-9]{6,12}$/.test(inquiryId)) return { error: `"${token}" is not a candidate ID.` };
+    const [t] = await query<Inquiry>(`SELECT * FROM inquiries WHERE id = $1 AND kind = 'technician'`, [inquiryId]);
+    if (!t) return { error: `${token.toUpperCase()} is not a technician in the pipeline.` };
+    const missing = CHECKS.technician.filter((c) => !t.checks[c.key]).map((c) => c.key);
+    if (!t.consent_at || (t.stage !== "verified" && t.stage !== "available") || missing.length) {
+      return { error: `${token.toUpperCase()} is not Verified (stage ${labelFor("technician", t.stage)}${missing.length ? `, missing ${missing.join(", ")}` : ""}${t.consent_at ? "" : ", no consent"}). Nobody is introduced before their checks.` };
+    }
+    ids.push(t.id.toUpperCase());
+  }
+  return { ids };
 }
 
 // ------------------------------------------------------------------ activity: contacts, follow-ups, proposals
@@ -350,8 +391,8 @@ export async function completeEvent(id: string): Promise<void> {
 
 /** What to do next at each employer stage, for whoever works the pipeline (Samuel or a VA). */
 const EMPLOYER_NEXT: Record<string, string> = {
-  received: "Make first contact within one business day: confirm the role is open and funded, and book a call.",
-  contacted: "Qualify the vacancy: open and funded, headcount, first-year base pay, start date, who signs. Then Qualified Vacancy.",
+  received: "Make first contact within one business day and book a call. A job post shows the role exists, not that it has a budget: ask.",
+  contacted: "Qualify the vacancy with the hiring manager: is the role approved and funded, headcount, first-year base pay, start date, who signs. Then Qualified Vacancy, with the funding check ticked.",
   qualifying: "Discuss terms: send ittsuiworks.com/deal (25% of first-year base pay, 90-day replacement, Net 15) and the written agreement. Then Terms Discussion.",
   proposal: "Get the agreement signed (the /deal order or the 1-page agreement). No candidate name, photo or contact before it is signed.",
   matching: "Earlier stage: get the agreement signed before anyone is introduced, then Signed Agreement.",
@@ -379,7 +420,7 @@ export function nextAction(row: Pick<Inquiry, "kind" | "stage" | "checks" | "ema
     : open.length === 0
       ? "No follow-up planned: add one with Log activity, kind Follow-up, and a due date."
       : early && !row.checks.vacancy
-        ? "Verify the vacancy below to open the two email drafts."
+        ? "Record where the vacancy is posted (below) to open the two email drafts."
         : "";
   return { text: EMPLOYER_NEXT[row.stage] ?? "Move it to the stage it is at.", warn };
 }

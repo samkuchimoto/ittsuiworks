@@ -4,7 +4,7 @@ ittsuiworks.com: technical recruiting and subcontractor sourcing for commercial 
 
 ## The offers (since 16 November 2026)
 
-- **Direct-hire placement (US hires):** 25% of first-year base pay, owed only on a hire we introduced, 90-day replacement on the written terms. Employers send a role at `/request`; nothing is charged on the site.
+- **Direct-hire placement (US hires):** 25% of first-year base pay, owed only on a hire we introduced, 90-day replacement on the written terms. Employers send a role at `/request`; nothing is charged on the site. Contract and contract-to-hire are not offered until their terms are approved (`OFFERED_ENGAGEMENTS` in config.ts; the form and the server accept direct hire only).
 - **Commercial project sourcing:** owners and GCs submit at `/post-project` at no charge; the licensed trade partner pays 8% to 12% on paid milestones under a written agreement.
 - Every request and application lands in the pipeline (`src/lib/pipeline.ts`, admin page); a person confirms agreements, licenses and insurance before any introduction. The formal order and terms: `/deal`.
 - The free job board and job alerts stay (they bring technicians).
@@ -22,7 +22,7 @@ ittsuiworks.com: technical recruiting and subcontractor sourcing for commercial 
 
 ## Environment (Vercel)
 
-`DATABASE_URL` (Neon, tables created on first use), `RESEND_API_KEY`, `CONTACT_TO_EMAIL`, `CONTACT_FROM_EMAIL`, `CRON_SECRET`, `ADMIN_KEY` (admin page at `/admin/<ADMIN_KEY>`), and when payments go on: `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` (endpoint `/api/stripe-webhook`).
+`DATABASE_URL` (Neon, tables created on first use), `RESEND_API_KEY`, `CONTACT_TO_EMAIL`, `CONTACT_FROM_EMAIL`, `CRON_SECRET`, `ADMIN_KEY` (typed once at `/admin`, which then keeps a signed 12-hour session cookie; the key is never in a URL; changing it signs every session out), and when payments go on: `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` (endpoint `/api/stripe-webhook`).
 
 ## The deal page (`/deal`)
 
@@ -36,8 +36,8 @@ English only, for US clients: the two deals, how payment works, and one **Place 
 
 - **Campaigns** (`CAMPAIGNS` in `src/lib/config.ts`): Miami electrical and Houston HVAC first, because we have technician supply there; this is a prospecting order, not a limit on where we work. Each campaign has a ready link on the admin page (`/request?trade=…&hub=…&utm_source=email&utm_medium=outbound&utm_campaign=…`), which opens the existing request form with the trade and place chosen. Add a row to open a new market or trade.
 - **Attribution:** `utm_source`, `utm_medium`, `utm_campaign` and the referring site's host are kept for the tab's session (`src/lib/attribution.ts`, sessionStorage, no cookie) and saved with any request, project, application or order in `inquiries.attribution`. The admin shows it on each lead and counts buyers per campaign and stage.
-- **Employer pipeline:** New Lead, Contacted, Qualified Vacancy, Terms Discussion, Signed Agreement, Authorized Candidate Introduction, Interview, Hire, Invoice. Signed Agreement needs the signed agreement ticked, an introduction each candidate's own yes, Hire and Invoice the hire confirmed in writing. Every employer lead shows its next action and warns when no follow-up is planned.
-- **Vacancy emails** (`src/lib/employer-outreach.ts`): two short emails per lead once its vacancy is verified (role and link). The site never sends them: a person sends from their own mailbox and logs it with who approved it. They stay drafts until Samuel approves the words and `EMPLOYER_TEMPLATES=approved` is set in Vercel.
+- **Employer pipeline:** New Lead, Contacted, Qualified Vacancy, Terms Discussion, Signed Agreement, Authorized Candidate Introduction, Interview, Hire, Invoice. Qualified Vacancy needs the hiring manager's confirmation that the role is approved and funded (a job post is not proof of a budget); Signed Agreement the signed agreement; an introduction names its candidates, and the server refuses any who is not Verified (consent plus license, identity and work history checks); Hire and Invoice a hire confirmed in writing. Every employer lead shows its next action and warns when no follow-up is planned.
+- **Vacancy emails** (`src/lib/employer-outreach.ts`): two short emails per lead once its posting is recorded (role and link). They ask whether the role is still open and never assume a budget. The site never sends them: a person sends from their own mailbox and logs it with who approved it. They stay drafts until Samuel approves the words and `EMPLOYER_TEMPLATES=approved` is set in Vercel.
 
 ## Daily run
 

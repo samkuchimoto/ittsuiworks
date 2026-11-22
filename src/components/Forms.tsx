@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
 import type { Dict } from "@/content";
 import { attachAttribution } from "@/lib/attribution";
-import { CREW_SIZES, CURRENCIES, DURATIONS, EMPLOYMENT, ENGAGEMENTS, EXPERIENCE, HEADCOUNTS, PAY_UNITS, POWER, PROJECT_SIZES, SOURCING_TRADES, STARTS, TRADES, campaignById } from "@/lib/config";
+import { CREW_SIZES, CURRENCIES, EMPLOYMENT, EXPERIENCE, HEADCOUNTS, PAY_UNITS, POWER, PROJECT_SIZES, SOURCING_TRADES, STARTS, TRADES, campaignById } from "@/lib/config";
 import { currencyFor } from "@/lib/countries";
 import { pathFor, type Locale } from "@/lib/site";
 import { ArrowIcon, CheckIcon } from "./Icons";
@@ -477,16 +477,15 @@ export function RequestForm({ lang, t, countries }: { lang: Locale; t: NetText &
         <Field id="rq-start" label={f.startDate}>
           <input id="rq-start" name="start" type="date" required className="field" aria-invalid={off("start")} />
         </Field>
-        <Field id="rq-duration" label={f.duration}>
-          <Select id="rq-duration" name="duration" optional options={DURATIONS.map((k) => [k, t.ui.durations[k]])} placeholder={f.select} bad={off("duration")} />
-        </Field>
         <NextButton t={f} onClick={next} missing={missing.length > 0} />
       </div>
       {/* Step 2: the details, the company and the consent. */}
       <div className={step === 2 ? "contents" : "hidden"}>
       <StepHead t={f} n={2} title={t.request.details} />
+      {/* Direct hire only until contract terms are approved (config.ts OFFERED_ENGAGEMENTS, 22 Nov 2026). */}
       <Field id="rq-engagement" label={f.engagement}>
-        <Select id="rq-engagement" name="engagement" options={ENGAGEMENTS.map((k) => [k, t.ui.engagements[k]])} placeholder={f.select} bad={bad("engagement")} />
+        <input type="hidden" name="engagement" value="direct_hire" />
+        <input id="rq-engagement" readOnly value={t.ui.engagements.direct_hire} className="field bg-mist/60 text-navy" aria-invalid={bad("engagement")} />
       </Field>
       <Field id="rq-pay" label={f.pay}>
         <input id="rq-pay" name="pay" maxLength={80} placeholder={f.payHint} className="field placeholder:text-mute/70" />

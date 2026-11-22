@@ -131,7 +131,8 @@ export default async function Deal({ params }: PageProps<"/[lang]/deal">) {
           <h2 id="pay-title" className="font-display mt-4 text-[30px] leading-[1.1] sm:text-[38px]">
             {DEAL.pay.title}
           </h2>
-          <ol className="mt-8 grid gap-4 md:grid-cols-3">
+          {/* Side by side only where each step fits in three lines (1100px and up); stacked below. */}
+          <ol className="mt-8 grid gap-4 min-[1100px]:grid-cols-3">
             {DEAL.pay.steps.map((step, i) => (
               <li key={step.title} className="rounded-2xl bg-white/[0.06] p-6 ring-1 ring-white/15">
                 <p className="flex items-center gap-3">
