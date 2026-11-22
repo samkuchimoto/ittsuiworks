@@ -2,11 +2,10 @@
 
 import { useState } from "react";
 import type { Dict } from "@/content";
+import { HUBS, SOURCING_TRADES as TRADES } from "@/lib/config";
 import { pathFor, type Locale } from "@/lib/site";
 import { ArrowIcon } from "./Icons";
 
-const TRADES = ["hvac", "electrical", "datacenter", "marine"] as const;
-const HUBS = ["tx", "fl", "us", "jp"] as const;
 /** Paid placement is for US hires only until the Japanese licence (Samuel, 16 Nov 2026): Japan is offered for projects only. */
 const hubsFor = (mode: "request" | "project") => HUBS.filter((h) => mode === "project" || h !== "jp");
 

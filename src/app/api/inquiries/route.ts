@@ -1,5 +1,6 @@
 import { getDictionary } from "@/content";
-import { CREW_SIZES, DURATIONS, ENGAGEMENTS, EXPERIENCE, HEADCOUNTS, POWER, PROJECT_SIZES, SOURCING_TRADES, STARTS, UPLOAD, collectsSeekers } from "@/lib/config";
+import { readAttribution } from "@/lib/attribution";
+import { CREW_SIZES, EXPERIENCE, HEADCOUNTS, OFFERED_ENGAGEMENTS, POWER, PROJECT_SIZES, SOURCING_TRADES, STARTS, UPLOAD, collectsSeekers } from "@/lib/config";
 import { fail, readForm, reader, refuse } from "@/lib/guard";
 import { createInquiry, isKind, type NewInquiry, type Upload } from "@/lib/pipeline";
 
@@ -62,9 +63,9 @@ export async function POST(request: Request) {
         Role: need("role", r.text("role", 80)) as string,
         // Optional since 18 Nov 2026 (Samuel: simplify the admin, never the law): asked on the first call instead.
         "Technicians needed": r.oneOf("headcount", HEADCOUNTS) ?? "",
-        Engagement: need("engagement", r.oneOf("engagement", ENGAGEMENTS)) as string,
+        // Direct hire only until contract terms are approved (Samuel, 22 Nov 2026): contract is refused here too.
+        Engagement: need("engagement", r.oneOf("engagement", OFFERED_ENGAGEMENTS)) as string,
         Start: need("start", r.text("start", 40)) as string,
-        "Project duration": r.oneOf("duration", DURATIONS) ?? "",
         "The work": r.text("description", 4000),
         "Licenses or certifications required": r.text("licenses", 400),
         "Pay range": r.text("pay", 80),
@@ -143,6 +144,8 @@ export async function POST(request: Request) {
     };
   }
   if (invalid.length) return fail("invalid", 400, [...new Set(invalid)]);
+  // Which outreach link brought it (utm values and the referring host, cleaned again here): never personal data.
+  input.attribution = readAttribution(form);
   try {
     await createInquiry(input, files);
     return Response.json({ ok: true });

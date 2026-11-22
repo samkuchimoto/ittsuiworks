@@ -68,6 +68,11 @@ export const DEAL = {
     ],
   },
   cta: "Place an Order",
+  /**
+   * The lighter first step beside the order button (22 Nov 2026): an employer who only wants to talk about a vacancy
+   * sends the role, with no billing details; the formal order comes once terms are agreed.
+   */
+  requestFirst: { before: "Not ready to order?", link: "Start with a technician request", after: "no billing details needed." },
   /** The outlined header button on every English page (not on /deal itself). */
   see: "See the Deal",
   formTitle: "Official Business Order & Verification",

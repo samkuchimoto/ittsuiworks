@@ -53,9 +53,18 @@ export default async function Deal({ params }: PageProps<"/[lang]/deal">) {
             <h1 className="font-display mt-4 text-[34px] leading-[1.08] text-navy sm:text-[44px] lg:text-[54px]">{DEAL.title}</h1>
             <p className="mt-5 max-w-[46rem] text-[17.5px] leading-relaxed text-ink/80">{DEAL.intro}</p>
             {/* The order button above the fold (Samuel, 22 Nov 2026). "#order" opens the same form as the button below. */}
-            <Cta href="#order" className="mt-7">
-              {DEAL.cta}
-            </Cta>
+            <div className="mt-7 flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-6">
+              <Cta href="#order" className="self-start sm:self-auto">
+                {DEAL.cta}
+              </Cta>
+              <p className="text-[15px] text-ink/80">
+                {DEAL.requestFirst.before}{" "}
+                <a href="/request" className="font-semibold text-navy underline underline-offset-4 hover:text-orange-deep">
+                  {DEAL.requestFirst.link}
+                </a>
+                , {DEAL.requestFirst.after}
+              </p>
+            </div>
           </div>
         </div>
       </section>
@@ -122,7 +131,8 @@ export default async function Deal({ params }: PageProps<"/[lang]/deal">) {
           <h2 id="pay-title" className="font-display mt-4 text-[30px] leading-[1.1] sm:text-[38px]">
             {DEAL.pay.title}
           </h2>
-          <ol className="mt-8 grid gap-4 md:grid-cols-3">
+          {/* Side by side only where each step fits in three lines (1100px and up); stacked below. */}
+          <ol className="mt-8 grid gap-4 min-[1100px]:grid-cols-3">
             {DEAL.pay.steps.map((step, i) => (
               <li key={step.title} className="rounded-2xl bg-white/[0.06] p-6 ring-1 ring-white/15">
                 <p className="flex items-center gap-3">

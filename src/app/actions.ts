@@ -2,6 +2,7 @@
 
 /** The buttons on the private pages (account, project, alerts, unsubscribe, admin). lib/market.ts does the work. */
 import { redirect } from "next/navigation";
+import { isAdmin, signIn, signOut } from "@/lib/admin-session";
 import { POWER, STARTS, isTrade } from "@/lib/config";
 import { isToken, query } from "@/lib/db";
 import { refreshJobPages } from "@/lib/job-cache";
@@ -65,37 +66,46 @@ export async function unsubscribeAction(form: FormData) {
 
 // ------------------------------------------------------------------ admin (ADMIN_KEY)
 
-const adminOk = (form: FormData) => {
-  const key = process.env.ADMIN_KEY;
-  return Boolean(key) && key!.length >= 24 && read(form, "key", 100) === key;
-};
+/**
+ * Every admin button checks the signed-in session on the server (lib/admin-session.ts). No key travels in a URL or a
+ * form any more: /admin asks for it once and keeps a 12-hour session.
+ */
+export async function adminLoginAction(form: FormData) {
+  const ok = await signIn(String(form.get("password") ?? "").slice(0, 200));
+  redirect(ok ? "/admin" : "/admin?login=failed");
+}
+
+export async function adminLogoutAction() {
+  await signOut();
+  redirect("/admin");
+}
 
 /** CSV lines: company, email, website, country (2 letters), trade (hvac | datacenter | marine). */
 export async function importProspectsAction(form: FormData) {
-  if (!adminOk(form)) redirect("/");
+  if (!(await isAdmin())) redirect("/admin");
   const rows = String(form.get("csv") ?? "")
     .split(/\r?\n/)
     .map((line) => line.split(",").map((cell) => cell.trim()))
     .filter((cells) => cells.length >= 5 && !/^company$/i.test(cells[0]));
   const added = await addProspects(rows.map(([company, email, website, country, trade]) => ({ company, email, website, country: country.toUpperCase(), trade, source: "import" })));
-  redirect(`/admin/${read(form, "key", 100)}?imported=${added}`);
+  redirect(`/admin?imported=${added}`);
 }
 
 export async function adminCloseJobAction(form: FormData) {
-  if (!adminOk(form)) redirect("/");
+  if (!(await isAdmin())) redirect("/admin");
   await query(`UPDATE jobs SET status = 'closed' WHERE id = $1`, [read(form, "job", 12)]);
   refreshJobPages([read(form, "job", 12)]);
-  redirect(`/admin/${read(form, "key", 100)}`);
+  redirect(`/admin`);
 }
 
 // ------------------------------------------------------------------ sourcing pipeline (admin)
 
 /** Moves a request, project or application to a stage; lib/pipeline.ts refuses it until every check is ticked. */
 export async function adminStageAction(form: FormData) {
-  if (!adminOk(form)) redirect("/");
+  if (!(await isAdmin())) redirect("/admin");
   const { setStage } = await import("@/lib/pipeline");
-  const error = await setStage(read(form, "id", 12), read(form, "stage", 20), form.getAll("checks").map(String), read(form, "note", 500));
-  redirect(`/admin/${read(form, "key", 100)}?msg=${encodeURIComponent(error ?? "Saved.")}#pipeline`);
+  const error = await setStage(read(form, "id", 12), read(form, "stage", 20), form.getAll("checks").map(String), read(form, "note", 500), read(form, "candidates", 3000));
+  redirect(`/admin?msg=${encodeURIComponent(error ?? "Saved.")}#pipeline`);
 }
 
 /**
@@ -103,9 +113,8 @@ export async function adminStageAction(form: FormData) {
  * Nothing is imported from Indeed automatically. Lands at stage 1 (qualified, verification pending).
  */
 export async function adminAddCandidateAction(form: FormData) {
-  if (!adminOk(form)) redirect("/");
-  const key = read(form, "key", 100);
-  const back = (msg: string) => redirect(`/admin/${key}?msg=${encodeURIComponent(msg)}#pipeline`);
+  if (!(await isAdmin())) redirect("/admin");
+  const back = (msg: string) => redirect(`/admin?msg=${encodeURIComponent(msg)}#pipeline`);
   const { createInquiry } = await import("@/lib/pipeline");
   const { SOURCING_TRADES } = await import("@/lib/config");
   const email = read(form, "email", 120).toLowerCase();
@@ -148,9 +157,8 @@ export async function adminAddCandidateAction(form: FormData) {
  * typed it). Technician placement is for US hires only; a Japan buyer goes in as a commercial project.
  */
 export async function adminAddLeadAction(form: FormData) {
-  if (!adminOk(form)) redirect("/");
-  const key = read(form, "key", 100);
-  const back = (msg: string, id?: string) => redirect(`/admin/${key}?msg=${encodeURIComponent(msg)}#${id ? `lead-${id}` : "pipeline"}`);
+  if (!(await isAdmin())) redirect("/admin");
+  const back = (msg: string, id?: string) => redirect(`/admin?msg=${encodeURIComponent(msg)}#${id ? `lead-${id}` : "pipeline"}`);
   const { addEvent, createInquiry } = await import("@/lib/pipeline");
   const { SOURCING_TRADES } = await import("@/lib/config");
   const kind = read(form, "kind", 20);
@@ -164,9 +172,12 @@ export async function adminAddLeadAction(form: FormData) {
   if (country !== "US" && country !== "JP") back("Not added: the country is US or JP.");
   if (kind === "talent_request" && country !== "US") back("Not added: technician placement is for US hires only; enter a Japan buyer as a commercial project.");
   if (due && !/^\d{4}-\d{2}-\d{2}$/.test(due)) back("Not added: the follow-up date is not a date.");
+  // The outbound campaign this buyer belongs to (lib/config.ts CAMPAIGNS), so manual and link leads count together.
+  const { cleanAttribution } = await import("@/lib/attribution");
   const id = await createInquiry({
     kind: kind as "talent_request" | "project",
     source: "outbound",
+    attribution: cleanAttribution({ campaign: read(form, "campaign", 48), medium: "outbound" }),
     stage: "received",
     acknowledge: false,
     notify: false,
@@ -190,11 +201,11 @@ export async function adminAddLeadAction(form: FormData) {
 
 // ------------------------------------------------------------------ technician profiles (admin, 17 Nov 2026)
 
-const toTechnicians = (form: FormData, msg: string) => redirect(`/admin/${read(form, "key", 100)}?msg=${encodeURIComponent(msg)}#technicians`);
+const toTechnicians = (form: FormData, msg: string) => redirect(`/admin?msg=${encodeURIComponent(msg)}#technicians`);
 
 /** Pastes the anonymous preview CSV: one invited profile per row (ID, trade, city, state, certifications only). */
 export async function adminLoadPartnersAction(form: FormData) {
-  if (!adminOk(form)) redirect("/");
+  if (!(await isAdmin())) redirect("/admin");
   const { loadInvited } = await import("@/lib/partners");
   const { added, skipped } = await loadInvited(String(form.get("csv") ?? "").slice(0, 200_000));
   toTechnicians(form, `Profiles loaded: ${added} added, ${skipped} skipped (already loaded or no valid ID). None is public until its owner confirms.`);
@@ -202,7 +213,7 @@ export async function adminLoadPartnersAction(form: FormData) {
 
 /** Takes a confirmed profile off the directory, or lists it again. */
 export async function adminPartnerStatusAction(form: FormData) {
-  if (!adminOk(form)) redirect("/");
+  if (!(await isAdmin())) redirect("/admin");
   const { setPartnerStatus } = await import("@/lib/partners");
   const status = read(form, "status", 10) === "active" ? "active" : "hidden";
   const ok = await setPartnerStatus(read(form, "id", 12).toUpperCase(), status);
@@ -211,17 +222,17 @@ export async function adminPartnerStatusAction(form: FormData) {
 
 /** An Indeed lead said YES in Indeed Messages: consent recorded, Qualification Pending, anonymous card on. No email. */
 export async function adminSaidYesAction(form: FormData) {
-  if (!adminOk(form)) redirect("/");
+  if (!(await isAdmin())) redirect("/admin");
   const { saidYes } = await import("@/lib/partners");
   const id = read(form, "id", 12);
   const day = read(form, "day", 10) || new Date().toISOString().slice(0, 10);
   const listed = await saidYes(id, day);
-  redirect(`/admin/${read(form, "key", 100)}?msg=${encodeURIComponent(listed ? `YES recorded. Listed as ${listed}. Nobody was emailed.` : "Not changed: only an Indeed lead without a recorded YES can be marked.")}#lead-${id}`);
+  redirect(`/admin?msg=${encodeURIComponent(listed ? `YES recorded. Listed as ${listed}. Nobody was emailed.` : "Not changed: only an Indeed lead without a recorded YES can be marked.")}#lead-${id}`);
 }
 
 /** Lists a /join technician who gave consent, anonymously, in the directory. */
 export async function adminListTechnicianAction(form: FormData) {
-  if (!adminOk(form)) redirect("/");
+  if (!(await isAdmin())) redirect("/admin");
   const { listFromInquiry } = await import("@/lib/partners");
   const id = await listFromInquiry(read(form, "id", 12));
   toTechnicians(form, id ? `Listed as ${id}.` : "Not listed: only a technician application with consent can be listed.");
@@ -229,8 +240,7 @@ export async function adminListTechnicianAction(form: FormData) {
 
 /** The sales activity log (16 Nov 2026): a call, email, meeting, note, follow-up (with a due date and owner) or proposal. */
 export async function adminEventAction(form: FormData) {
-  if (!adminOk(form)) redirect("/");
-  const key = read(form, "key", 100);
+  if (!(await isAdmin())) redirect("/admin");
   const { EVENT_KINDS, addEvent } = await import("@/lib/pipeline");
   const kind = read(form, "kind", 12);
   const text = String(form.get("text") ?? "").trim().slice(0, 2000);
@@ -243,14 +253,86 @@ export async function adminEventAction(form: FormData) {
   else if (due && !/^\d{4}-\d{2}-\d{2}$/.test(due)) msg = "Not logged: the due date is not a date.";
   else if (amount !== null && !(Number.isFinite(amount) && amount >= 0 && amount < 1e9)) msg = "Not logged: the amount is not a number.";
   else await addEvent(id, { kind: kind as (typeof EVENT_KINDS)[number], text, due: due || null, owner: read(form, "owner", 60), amount });
-  redirect(`/admin/${key}?msg=${encodeURIComponent(msg)}#lead-${id}`);
+  redirect(`/admin?msg=${encodeURIComponent(msg)}#lead-${id}`);
+}
+
+// ------------------------------------------------------------------ employer outreach (admin, 22 Nov 2026)
+
+/**
+ * A person records where the employer's vacancy is posted: the role title and the link (their careers page or a job
+ * board). Recorded as "vacancy" with the day; it opens the two email drafts for this lead. A posting does not prove
+ * a budget: funding is a separate check, confirmed with the hiring manager. Employers only. Nothing is emailed.
+ */
+export async function adminVacancyAction(form: FormData) {
+  if (!(await isAdmin())) redirect("/admin");
+  const id = read(form, "id", 12);
+  const back = (msg: string) => redirect(`/admin?msg=${encodeURIComponent(msg)}#lead-${id}`);
+  const url = read(form, "url", 300);
+  const role = read(form, "role", 80);
+  let ok = false;
+  try {
+    const parsed = new URL(url);
+    ok = (parsed.protocol === "https:" || parsed.protocol === "http:") && parsed.hostname.includes(".");
+  } catch {
+    ok = false;
+  }
+  if (!ok) back("Not saved: paste the link to the posting (https://...).");
+  if (!role) back("Not saved: give the role title as the employer posted it.");
+  const { addEvent } = await import("@/lib/pipeline");
+  const day = new Date().toISOString().slice(0, 10);
+  const rows = await query<{ id: string }>(
+    `UPDATE inquiries SET checks = checks || jsonb_build_object('vacancy', $2::text),
+            data = CASE WHEN COALESCE(data->>'Role', '') = '' THEN data || jsonb_build_object('Role', $3::text) ELSE data END
+     WHERE id = $1 AND kind = 'talent_request' RETURNING id`,
+    [id, `${day}: ${url}`, role],
+  );
+  if (!rows.length) back("Not saved: only an employer request can have a vacancy.");
+  await addEvent(id, { kind: "note", text: `Vacancy posting seen: ${role}, ${url} (budget not confirmed yet)`, owner: read(form, "owner", 60) });
+  back("Posting recorded. The email drafts are open below. The budget is still to confirm with the hiring manager.");
+}
+
+/**
+ * A person sent one of the two vacancy emails from their own mailbox: log it, with who approved it. Refused until
+ * Samuel approves the words (EMPLOYER_TEMPLATES=approved), without a verified vacancy, an email or an approver, and
+ * for a lead that is Lost. After the first email, a follow-up is planned four business days later.
+ */
+export async function adminTemplateSentAction(form: FormData) {
+  if (!(await isAdmin())) redirect("/admin");
+  const id = read(form, "id", 12);
+  const back = (msg: string) => redirect(`/admin?msg=${encodeURIComponent(msg)}#lead-${id}`);
+  const { EMPLOYER_TEMPLATES, employerTemplatesApproved, isEmployerTemplate, renderEmployerEmail } = await import("@/lib/employer-outreach");
+  const { addEvent } = await import("@/lib/pipeline");
+  const template = read(form, "template", 20);
+  const approver = read(form, "approver", 60);
+  if (!employerTemplatesApproved()) back("Not logged: these emails wait for Samuel's approval of their words (EMPLOYER_TEMPLATES=approved in Vercel).");
+  if (!isEmployerTemplate(template)) back("Not logged: unknown email.");
+  if (!approver || read(form, "sent", 3) !== "yes") back("Not logged: name who approved it, and tick that you sent it yourself.");
+  const [lead] = await query<{ kind: string; stage: string; company: string; name: string; email: string; place: string; trades: string[]; data: Record<string, string>; checks: Record<string, string>; attribution: Record<string, string> }>(
+    `SELECT kind, stage, company, name, email, place, trades, data, checks, attribution FROM inquiries WHERE id = $1`,
+    [id],
+  );
+  if (!lead || lead.kind !== "talent_request") back("Not logged: only an employer request.");
+  // Templates are for first contact about a posting; they never stand in for a confirmed budget.
+  if (lead.stage === "lost") back("Not logged: this lead is Lost.");
+  const mail = renderEmployerEmail(template as keyof typeof EMPLOYER_TEMPLATES, lead);
+  if ("missing" in mail) back(`Not logged: ${mail.missing}`);
+  await addEvent(id, { kind: "email", text: `Sent "${EMPLOYER_TEMPLATES[template as keyof typeof EMPLOYER_TEMPLATES].label}" to ${lead.email} by hand, approved by ${approver}`, owner: read(form, "owner", 60) || approver });
+  if (template === "first") {
+    const due = new Date();
+    for (let added = 0; added < 4; ) {
+      due.setUTCDate(due.getUTCDate() + 1);
+      if (due.getUTCDay() !== 0 && due.getUTCDay() !== 6) added++;
+    }
+    await addEvent(id, { kind: "followup", text: "No reply? Send the follow-up email", due: due.toISOString().slice(0, 10), owner: read(form, "owner", 60) || approver });
+  }
+  back(template === "first" ? "Logged. Follow-up planned in 4 business days." : "Logged.");
 }
 
 export async function adminEventDoneAction(form: FormData) {
-  if (!adminOk(form)) redirect("/");
+  if (!(await isAdmin())) redirect("/admin");
   const { completeEvent } = await import("@/lib/pipeline");
   await completeEvent(read(form, "event", 12));
-  redirect(`/admin/${read(form, "key", 100)}?msg=${encodeURIComponent("Follow-up done.")}#pipeline`);
+  redirect(`/admin?msg=${encodeURIComponent("Follow-up done.")}#pipeline`);
 }
 
 // ------------------------------------------------------------------ deal orders (admin): getting paid through Mercury
@@ -261,8 +343,7 @@ export async function adminEventDoneAction(form: FormData) {
  * the same number, so a double click never bills twice.
  */
 export async function adminDealInvoiceAction(form: FormData) {
-  if (!adminOk(form)) redirect("/");
-  const key = read(form, "key", 100);
+  if (!(await isAdmin())) redirect("/admin");
   const { invoiceDealOrder } = await import("@/lib/deal");
   const money = (name: string) => Number(read(form, name, 20).replace(/[,\s$%]/g, ""));
   let msg: string;
@@ -278,5 +359,5 @@ export async function adminDealInvoiceAction(form: FormData) {
   } catch (error) {
     msg = `Not invoiced. ${error instanceof Error ? error.message : "Unknown error."}`;
   }
-  redirect(`/admin/${key}?deal=${encodeURIComponent(msg.slice(0, 300))}#deal-orders`);
+  redirect(`/admin?deal=${encodeURIComponent(msg.slice(0, 300))}#deal-orders`);
 }

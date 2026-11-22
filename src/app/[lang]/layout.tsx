@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { notFound } from "next/navigation";
 import { getDictionary } from "@/content";
+import { Attribution } from "@/components/Attribution";
 import { Reveal } from "@/components/Reveal";
 import { BRAND, SITE_URL, isLocale, locales } from "@/lib/site";
 import { fontVariables } from "../fonts";
@@ -46,6 +47,7 @@ export default async function RootLayout({ children, params }: LayoutProps<"/[la
       <body>
         {children}
         <Reveal />
+        <Attribution />
       </body>
     </html>
   );

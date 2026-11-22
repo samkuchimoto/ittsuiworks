@@ -215,6 +215,9 @@ CREATE TABLE IF NOT EXISTS inquiry_events (
 );
 CREATE INDEX IF NOT EXISTS inquiry_events_inquiry ON inquiry_events (inquiry_id, at DESC);
 CREATE INDEX IF NOT EXISTS inquiry_events_open ON inquiry_events (kind, done, due);
+-- Distribution (22 Nov 2026), additive only: which outreach link brought a lead (utm source, medium, campaign, and the
+-- referring website's host). Never personal data. Rows saved before keep '{}'.
+ALTER TABLE inquiries ADD COLUMN IF NOT EXISTS attribution jsonb NOT NULL DEFAULT '{}';
 -- Technician profiles (17 Nov 2026): anonymous cards only. An invited row holds no name or contact detail; those
 -- arrive in the technician's own pipeline entry (inquiry_id) when they confirm. Only 'active' rows are public.
 CREATE TABLE IF NOT EXISTS partners (

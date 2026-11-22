@@ -1,4 +1,5 @@
 import { checkBotId } from "botid/server";
+import { readAttribution } from "@/lib/attribution";
 import { createDealOrder, parseDealOrder } from "@/lib/deal";
 import { fail, readForm, refuse } from "@/lib/guard";
 import { clientIp } from "@/lib/rate-limit";
@@ -23,7 +24,7 @@ export async function POST(request: Request) {
   if (!(await isHuman())) return fail("bot", 403);
 
   try {
-    const { reference } = await createDealOrder(parsed.order, { ip: clientIp(request), userAgent: request.headers.get("user-agent") ?? "" });
+    const { reference } = await createDealOrder(parsed.order, { ip: clientIp(request), userAgent: request.headers.get("user-agent") ?? "", attribution: readAttribution(form) });
     return Response.json({ ok: true, reference });
   } catch (error) {
     console.error("[deal] order failed:", error instanceof Error ? error.message : "unknown");

@@ -8,6 +8,7 @@
 import "server-only";
 import { randomInt } from "node:crypto";
 import { DEAL, KIND_LABEL, TERMS, TERMS_VERSION, plain, type DealKind } from "@/content/deal";
+import type { Attribution } from "./attribution";
 import { countryName, isCountry } from "./countries";
 import { query } from "./db";
 import { EMAIL as EMAIL_SYNTAX, reader } from "./guard";
@@ -185,7 +186,7 @@ const alertTo = () => process.env.ORDER_ALERT_EMAIL?.trim() || undefined;
  * Stores the order, puts it in the sales pipeline and sends both emails. Returns the reference.
  * An email that fails never loses the order: it is stored first, and the inbox alert says if the client's email failed.
  */
-export async function createDealOrder(order: DealOrderInput, meta: { ip: string; userAgent: string }): Promise<{ reference: string; review: string[] }> {
+export async function createDealOrder(order: DealOrderInput, meta: { ip: string; userAgent: string; attribution?: Attribution }): Promise<{ reference: string; review: string[] }> {
   const review = reviewReasons(order);
   const terms = TERMS[order.kind].map(plain);
   let reference = "";
@@ -227,6 +228,7 @@ export async function createDealOrder(order: DealOrderInput, meta: { ip: string;
     const inquiryId = await createInquiry({
       kind: PIPELINE_KIND[order.kind],
       source: "deal",
+      attribution: meta.attribution,
       name: order.signerName,
       email: order.email,
       phone: order.phone,
