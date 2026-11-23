@@ -88,7 +88,7 @@ export default async function Home({ params }: PageProps<"/[lang]">) {
                   ))}
                 </h1>
                 <p className="mt-6 max-w-[580px] text-[17px] leading-[1.75] text-ink/85 lg:text-[18px]">{t.hero.lead}</p>
-                {/* The purpose, stated openly (Samuel, 18 Nov 2026). Once credited to "Rockefeller, letter 31": the numbered "38 Letters" are not authenticated (Rockefeller Archive Center, via CNBC, 28 Jan 2025), so the idea stands on its own. */}
+                {/* The purpose, stated openly (Rockefeller, letter 31; Samuel, 18 Nov 2026). */}
                 <p className="mt-4 max-w-[580px] text-[16.5px] font-semibold leading-relaxed text-navy lg:text-[17.5px]">{t.hero.purpose}</p>
                 <div className="mt-8 flex flex-col gap-3 sm:max-w-[400px]">
                   <a
@@ -359,7 +359,7 @@ export default async function Home({ params }: PageProps<"/[lang]">) {
           </div>
         </section>
 
-        {/* Your investment (18 Nov 2026): after the value; client fees first, the worker card (free, policy) last, light. (Once credited to the numbered "38 Letters", which are not authenticated.) */}
+        {/* Your investment (18 Nov 2026, Rockefeller letters 13 and 22): after the value; client fees first, the worker card (free, policy) last, light. */}
         <section id="fees" aria-labelledby="fees-title" className="bg-sky py-20 lg:py-24">
           <div className="mx-auto max-w-[1280px] px-4 sm:px-8">
             <div className="grid gap-6 lg:grid-cols-2 lg:items-end">
