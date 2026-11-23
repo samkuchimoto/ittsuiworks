@@ -22,6 +22,7 @@ import {
 import { isAdmin } from "@/lib/admin-session";
 import { campaignLink } from "@/lib/attribution";
 import { EMPLOYER_TEMPLATES, employerTemplatesApproved, renderEmployerEmail, vacancyUrl } from "@/lib/employer-outreach";
+import { SignedEmail } from "./SignedEmail";
 import { PARTNERS, confirmLink, headline, listPartners } from "@/lib/partners";
 import { Card, Shell } from "@/components/Shell";
 import { getDictionary } from "@/content";
@@ -704,8 +705,9 @@ function NextStep({ next }: { next: { text: string; warn: string } | null }) {
 type EmployerRow = Awaited<ReturnType<typeof listInquiries>>["talent_request"][number];
 
 /**
- * Vacancy check and the two employer emails (lib/employer-outreach.ts). Nothing is sent from here: the person sends
- * from their own mailbox, then logs it with who approved it. Until Samuel approves the words they are drafts only.
+ * Vacancy check and the three employer emails (lib/employer-outreach.ts). Nothing is sent from here: the person signs
+ * it with their own name, sends it from their own mailbox, then logs it with who approved it. Until Samuel approves
+ * the words they are drafts only.
  */
 function EmployerEmails({ r }: { r: EmployerRow }) {
   const approved = employerTemplatesApproved();
@@ -757,15 +759,8 @@ function EmployerEmails({ r }: { r: EmployerRow }) {
                 <p className="mt-2 font-semibold text-orange-deep">{mail.missing}</p>
               ) : (
                 <>
-                  <pre className="mt-2 whitespace-pre-wrap rounded bg-white p-3 text-[13.5px] leading-relaxed">{[`To: ${r.email}`, `Subject: ${mail.subject}`, "", mail.text].join("\n")}</pre>
-                  {approved ? (
-                    <div className="mt-2 flex flex-wrap items-end gap-2">
-                      <a
-                        href={`mailto:${encodeURIComponent(r.email)}?subject=${encodeURIComponent(mail.subject)}&body=${encodeURIComponent(mail.text.split("\n").join("\r\n"))}`}
-                        className="rounded-md bg-navy px-4 py-2 font-semibold text-white"
-                      >
-                        Open in my mail app
-                      </a>
+                  <p className="mt-2 text-mute">{EMPLOYER_TEMPLATES[id].note}</p>
+                  <SignedEmail to={r.email} subject={mail.subject} text={mail.text} canSend={approved}>
                       <form action={adminTemplateSentAction} className="flex flex-wrap items-end gap-2">
                         <input type="hidden" name="id" value={r.id} />
                         <input type="hidden" name="template" value={id} />
@@ -776,10 +771,8 @@ function EmployerEmails({ r }: { r: EmployerRow }) {
                         </label>
                         <button className="rounded-md px-4 py-2 font-semibold text-navy ring-1 ring-navy/30">Log as sent</button>
                       </form>
-                    </div>
-                  ) : (
-                    <p className="mt-2 text-mute">Not for sending yet. Once Samuel approves these words, EMPLOYER_TEMPLATES=approved in Vercel opens the mail button and the log.</p>
-                  )}
+                  </SignedEmail>
+                  {!approved && <p className="mt-2 text-mute">Not for sending yet. Once Samuel approves these words, EMPLOYER_TEMPLATES=approved in Vercel opens the mail button and the log.</p>}
                 </>
               )}
             </details>

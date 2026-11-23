@@ -292,7 +292,7 @@ export async function adminVacancyAction(form: FormData) {
 }
 
 /**
- * A person sent one of the two vacancy emails from their own mailbox: log it, with who approved it. Refused until
+ * A person sent one of the three vacancy emails from their own mailbox: log it, with who approved it. Refused until
  * Samuel approves the words (EMPLOYER_TEMPLATES=approved), without a verified vacancy, an email or an approver, and
  * for a lead that is Lost. After the first email, a follow-up is planned four business days later.
  */

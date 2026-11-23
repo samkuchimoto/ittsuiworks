@@ -1,51 +1,77 @@
 /**
- * Two short emails to an employer whose vacancy we have seen posted (22 Nov 2026). A posting shows the role exists, not
- * that its budget is approved, so the emails ask whether it is still open and never assume a budget; funding is
- * confirmed with the hiring manager before the lead can be Qualified Vacancy (pipeline.ts EMPLOYER_GATES). The site never sends them: the admin
- * shows each one filled in for the lead, and a person reads it, sends it from their own mailbox and logs it as sent,
- * naming who approved it. Until Samuel approves these words (EMPLOYER_TEMPLATES=approved in Vercel) they are drafts:
- * shown for review only, with no mail button and nothing can be logged as sent.
+ * Three short emails to an employer whose vacancy we have seen posted (22 Nov 2026; rewritten 23 Nov 2026 after three
+ * reviews of the November campaign, decided by Rockefeller's letters and Musk's interviews). A posting shows the role
+ * exists, not that its budget is approved, so the emails ask whether it is still open and never assume a budget;
+ * funding is confirmed with the hiring manager before the lead can be Qualified Vacancy (pipeline.ts EMPLOYER_GATES).
+ * The site never sends them: the admin shows each one filled in for the lead, and a person reads it, signs it with
+ * their own name, sends it from their own mailbox and logs it as sent, naming who approved it. Until Samuel approves
+ * these words (EMPLOYER_TEMPLATES=approved in Vercel) they are drafts: shown for review only, with no mail button and
+ * nothing can be logged as sent.
  *
- * Rules: only facts we can stand behind. No candidate count, no "verified candidates" (a candidate is verified only
- * once their checks are ticked), no "Re:" subject, the approved fee in plain words with the full terms one click
- * away, who we are with a postal address and how to stop (CAN-SPAM), one email address per send, one person at a time.
- * Values: {first} {company} {role} {a_role} {place} {where} {trade} {link} {deal}
+ * Rules (Samuel, 23 Nov 2026):
+ * - One offer and one question: direct hire for the role they posted; is it still open, and which license and shift
+ *   (Rockefeller, letter 31: purpose is everything; Musk, Everyday Astronaut 2021: delete the part, then simplify).
+ * - No amount before they answer (Rockefeller, letter 22: never mention the amount first). Until then the money line is
+ *   "You pay only if you hire someone we introduce". Never "free" (letter 13). When the terms are stated, they are
+ *   stated exactly as approved, conditions included.
+ * - No links in the first email or the follow-up: ittsuiworks.com is a new domain and plain replies build its standing
+ *   (Musk, Dwarkesh Patel 2026: fix the limiting factor; Rockefeller, letter 26: patience). The terms email carries
+ *   one link, to /deal.
+ * - Signed by the person who sends it, first and last name, never "team" (Rockefeller, letter 38).
+ * - No candidate counts. No "Re:" typed into a subject: the follow-up and the terms go as real replies in the same
+ *   thread. Every email says it is a solicitation, gives the postal address and how to stop (CAN-SPAM).
+ * Values: {first} {company} {role} {a_role} {city} {people} {deal} {sender}
  */
 import "server-only";
-import { campaignLink, type Attribution } from "./attribution";
-import { CAMPAIGNS, SOURCING_TRADES, type Hub, type SourcingTrade } from "./config";
 import { SITE_URL } from "./site";
 
 export const employerTemplatesApproved = () => process.env.EMPLOYER_TEMPLATES === "approved";
 
+/** Where the sender's own name goes. The admin fills it in the browser, from the name the sender types. */
+export const SENDER_TOKEN = "{sender}";
+
 export const EMPLOYER_TEMPLATES = {
   first: {
     label: "Vacancy, first email",
-    subject: "{role} in {place}",
+    note: "One person at a time, on a weekday morning their time.",
+    subject: "{role} in {city}",
     lines: [
-      "Hello {first},",
+      "Hi {first},",
       "",
-      "I saw that {company} is hiring {a_role} in {place} ({where}).",
+      "I saw {company} is hiring {a_role} in {city}.",
       "",
-      "Ittsui Works recruits commercial {trade} technicians for direct hire. We present a candidate only after checking their identity, work history and the licenses the role needs, and only with the candidate's consent.",
+      "Ittsui Works recruits {people} for direct hire. You pay only if you hire someone we introduce.",
       "",
-      // The guarantee exactly as the approved terms state it, conditions included (Samuel, 22 Nov 2026).
-      "Our fee is 25% of first-year base pay, owed only if you hire someone we introduce. If the hire leaves within 90 days of starting, we provide a replacement at no extra fee, provided the invoice was paid within 15 days (not for layoffs or a changed role). Sending us the role costs nothing. Full terms: {deal}",
-      "",
-      "If the role is still open, reply here or send the details in two minutes:",
-      "{link}",
+      "Is the role still open? If so, reply with the license and shift it needs, and I will start the search.",
     ],
   },
   followup: {
     label: "Vacancy, follow-up (4 business days later, no reply)",
-    subject: "{role} in {place}: still open?",
+    note: "Send it as a reply to your first email (open that email in Sent, then Reply), so both stay in one thread.",
+    subject: "{role} in {city}",
     lines: [
-      "Hello {first},",
+      "Hi {first},",
       "",
-      "Following up on your {role} opening in {place}. If it is still open, send the role and we start sourcing today:",
-      "{link}",
+      "Is the {role} role in {city} still open? If so, reply with the license and shift it needs, and I will start the search.",
+    ],
+  },
+  terms: {
+    label: "Vacancy, terms (only after they reply)",
+    note: "Only after they answer. Send it as your reply in their thread, and answer any question they asked first.",
+    subject: "{role} in {city}",
+    lines: [
+      "Hi {first},",
       "",
-      "The exact terms, including the 90-day replacement: {deal}",
+      "Thank you. Here are our terms for the {role} role:",
+      "",
+      // The fee and guarantee exactly as the approved terms state them, conditions included (Samuel, 22 Nov 2026).
+      "Fee: 25% of first-year base pay, owed only if you hire someone we introduce.",
+      "Replacement: if the hire leaves within 90 days of starting, we provide a replacement at no extra fee, provided the invoice was paid within 15 days (not for layoffs or a changed role).",
+      "Candidates: we introduce someone only after checking their identity, work history and the licenses the role needs, and only with their consent.",
+      "",
+      "The full terms: {deal}",
+      "",
+      "To begin, reply with the pay range and the start date you have in mind.",
     ],
   },
 } as const;
@@ -54,21 +80,21 @@ export const isEmployerTemplate = (v: string): v is EmployerTemplateId => v in E
 
 const FOOTER = [
   "",
-  "Ittsui Works recruiting team",
+  SENDER_TOKEN,
+  "Ittsui Works",
   "--",
-  "Ittsui Works is operated by Kuchimoto LLC, 30 N Gould St, Ste R, Sheridan, WY 82801, USA. Reply STOP and we will not write again.",
+  "A business solicitation from Kuchimoto LLC, operator of Ittsui Works, 30 N Gould St, Ste R, Sheridan, WY 82801, USA. Reply STOP and we will not write again.",
 ];
 
-const TRADE_WORDS: Record<string, string> = { hvac: "HVAC", electrical: "electrical", datacenter: "data center", marine: "marine" };
+/** Who we recruit, by the lead's first trade, in the words a hiring manager uses. */
+const TRADE_PEOPLE: Record<string, string> = {
+  hvac: "commercial HVAC technicians",
+  electrical: "commercial electricians",
+  datacenter: "data center technicians",
+  marine: "marine technicians",
+};
 
-/** The hub a place belongs to, for the request link: Florida and Texas have their own, any other US site is "us". */
-export function hubOf(place: string): Hub {
-  if (/\b(FL|Fla\.?|Florida)\b/i.test(place)) return "fl";
-  if (/\b(TX|Tex\.?|Texas)\b/i.test(place)) return "tx";
-  return "us";
-}
-
-type Lead = { company: string; name: string; email: string; place: string; trades: string[]; data: Record<string, string>; checks: Record<string, string>; attribution: Attribution };
+type Lead = { company: string; name: string; email: string; place: string; trades: string[]; data: Record<string, string>; checks: Record<string, string> };
 
 /** The posting link recorded for the vacancy ("2026-11-22: https://..."), or null. */
 export function vacancyUrl(checks: Record<string, string>): string | null {
@@ -76,37 +102,27 @@ export function vacancyUrl(checks: Record<string, string>): string | null {
   return m ? m[0] : null;
 }
 
+/** "Miami, FL" -> "Miami": the city as a hiring manager says it, without the state. */
+export const cityOf = (place: string) => place.split(",")[0].trim();
+
 /**
- * The email for one lead, filled in, or why it cannot be written yet. The link is the request form with the lead's
- * trade and hub chosen and its campaign named (the lead's own campaign, else the configured campaign for that trade
- * and hub, else "outbound-employer").
+ * The email for one lead, filled in except for the sender's name ({sender}), or why it cannot be written yet. The
+ * posting link is required although the email does not quote it: no posting, no email.
  */
 export function renderEmployerEmail(id: EmployerTemplateId, lead: Lead): { subject: string; text: string } | { missing: string } {
-  const url = vacancyUrl(lead.checks);
-  if (!url) return { missing: "Record where the vacancy is posted first (the employer's careers page or job post)." };
+  if (!vacancyUrl(lead.checks)) return { missing: "Record where the vacancy is posted first (the employer's careers page or job post)." };
   if (!lead.email) return { missing: "No email on this lead: add one (call first if they gave only a phone)." };
   const role = lead.data.Role?.trim();
   if (!role) return { missing: "No role title: add it when you record the posting." };
-  const trade = lead.trades[0] ?? "";
-  const sourcing = (SOURCING_TRADES as readonly string[]).includes(trade) ? (trade as SourcingTrade) : undefined;
-  const hub = hubOf(lead.place);
-  const campaign = lead.attribution.campaign ?? CAMPAIGNS.find((c) => c.trade === trade && c.hub === hub)?.id ?? "outbound-employer";
-  const known = CAMPAIGNS.find((c) => c.id === campaign);
-  let where = "your job post";
-  try {
-    where = `posted on ${new URL(url).hostname.replace(/^www\./, "")}`;
-  } catch {
-    // keep the generic words
-  }
+  const city = cityOf(lead.place || "");
+  if (!city) return { missing: "No city on this lead: add the city where the role is based." };
   const values: Record<string, string> = {
     first: lead.name.trim().split(/\s+/)[0] || "there",
     company: lead.company || "your company",
     role,
     a_role: `${/^[aeiou]/i.test(role) ? "an" : "a"} ${role}`,
-    place: lead.place || "your site",
-    where,
-    trade: TRADE_WORDS[trade] ?? "trade",
-    link: campaignLink({ id: campaign, label: known?.label ?? campaign, trade: known?.trade ?? sourcing, hub: known?.hub ?? hub }, "email"),
+    city,
+    people: TRADE_PEOPLE[lead.trades[0] ?? ""] ?? "commercial technicians",
     deal: `${SITE_URL}/deal`,
   };
   const fillIn = (s: string) => s.replace(/\{(\w+)\}/g, (m, k: string) => values[k] ?? m);
