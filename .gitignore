@@ -10,3 +10,7 @@ npm-debug.log*
 
 .vercel
 .env*
+
+# Internal sales material and prospect lists stay local: this repository is public
+NEW Ittsui Works Sales Pitch*.pdf
+*prospects*.csv
